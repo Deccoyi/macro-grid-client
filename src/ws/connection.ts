@@ -15,6 +15,17 @@ interface LayoutFullData {
   pageId: string;
 }
 
+interface WelcomeData {
+  serverName: string;
+  serverVersion: string;
+  token?: string | null;
+}
+
+interface ErrorData {
+  code: string;
+  message: string;
+}
+
 export interface ProfileSummary {
   id: string;
   name: string;
@@ -24,13 +35,16 @@ interface ProfilesListData {
   profiles: ProfileSummary[];
 }
 
-export type ConnectionStatus = "connecting" | "connected" | "disconnected";
+export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "pairing_required";
 
 export interface ConnectionEvents {
   onStatusChange: (status: ConnectionStatus) => void;
   onLayout: (profile: Profile, pageId: string) => void;
   onWidgetState: (state: WidgetState) => void;
   onProfiles: (profiles: ProfileSummary[]) => void;
+  /** A brand-new token was issued (first pairing, or a re-pair) — the caller must persist it: it
+   * replaces the PIN on every future connection attempt. */
+  onPaired: (token: string) => void;
 }
 
 const CLIENT_VERSION = "0.1.0";
@@ -60,6 +74,7 @@ export class ServerConnection {
     private readonly host: string,
     private readonly deviceId: string,
     private readonly deviceName: string,
+    private token: string | null,
     private readonly events: ConnectionEvents,
   ) {}
 
@@ -80,6 +95,21 @@ export class ServerConnection {
     this.socket.send(JSON.stringify({ type, data } satisfies Envelope));
   }
 
+  /** Retries `hello` on the still-open socket with a PIN the user just typed, after the server asked for one. */
+  retryWithPin(pin: string): void {
+    this.sendHello(pin);
+  }
+
+  private sendHello(pin?: string): void {
+    this.send("hello", {
+      deviceId: this.deviceId,
+      deviceName: this.deviceName,
+      token: this.token,
+      clientVersion: CLIENT_VERSION,
+      pin,
+    });
+  }
+
   private open(): void {
     if (this.destroyed) return;
     this.events.onStatusChange("connecting");
@@ -89,12 +119,7 @@ export class ServerConnection {
     socket.onopen = () => {
       if (this.destroyed) return;
       this.backoffMs = 500;
-      this.send("hello", {
-        deviceId: this.deviceId,
-        deviceName: this.deviceName,
-        token: null,
-        clientVersion: CLIENT_VERSION,
-      });
+      this.sendHello();
       this.events.onStatusChange("connected");
     };
 
@@ -123,6 +148,18 @@ export class ServerConnection {
     }
 
     switch (envelope.type) {
+      case "welcome": {
+        const data = envelope.data as WelcomeData;
+        if (data.token) {
+          this.token = data.token;
+          this.events.onPaired(data.token);
+        }
+        // Receiving welcome always means the most recent hello succeeded — including a retryWithPin()
+        // after a "pairing_required" error, which otherwise leaves the status stuck on that value
+        // forever even though the connection is now fully working.
+        this.events.onStatusChange("connected");
+        break;
+      }
       case "layout.full": {
         const data = envelope.data as LayoutFullData;
         this.events.onLayout(data.profile, data.pageId);
@@ -134,6 +171,11 @@ export class ServerConnection {
       case "profiles.list":
         this.events.onProfiles((envelope.data as ProfilesListData).profiles);
         break;
+      case "error": {
+        const data = envelope.data as ErrorData;
+        if (data.code === "pairing_required") this.events.onStatusChange("pairing_required");
+        break;
+      }
       default:
         break;
     }

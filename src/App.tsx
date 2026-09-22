@@ -8,6 +8,9 @@ const HOST_KEY = "macro-station.host";
 const EDGE_SWIPE_ZONE_PX = 24;
 const SWIPE_OPEN_THRESHOLD_PX = 60;
 
+/** One pairing token per server host, so switching between two Macro Station servers doesn't require re-pairing every time you go back to one you've already paired with. */
+const tokenKey = (host: string) => `macro-station.token.${host}`;
+
 export function App() {
   const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
@@ -25,7 +28,7 @@ export function App() {
     setStates({});
     setProfiles([]);
 
-    const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", {
+    const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", localStorage.getItem(tokenKey(targetHost)), {
       onStatusChange: setStatus,
       onLayout: (nextProfile, nextPageId) => {
         setProfile(nextProfile);
@@ -36,6 +39,7 @@ export function App() {
         setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
       },
       onProfiles: setProfiles,
+      onPaired: (token) => localStorage.setItem(tokenKey(targetHost), token),
     });
     connectionRef.current = connection;
     connection.connect();
@@ -70,6 +74,7 @@ export function App() {
         status={status}
         onHostChange={setHost}
         onConnect={() => host.trim() && connect(host.trim())}
+        onSubmitPin={(pin) => connectionRef.current?.retryWithPin(pin)}
       />
     );
   }
@@ -240,12 +245,17 @@ function ConnectScreen({
   status,
   onHostChange,
   onConnect,
+  onSubmitPin,
 }: {
   host: string;
   status: ConnectionStatus;
   onHostChange: (v: string) => void;
   onConnect: () => void;
+  onSubmitPin: (pin: string) => void;
 }) {
+  const [pin, setPin] = useState("");
+  const pairing = status === "pairing_required";
+
   return (
     <div
       style={{
@@ -255,30 +265,68 @@ function ConnectScreen({
       }}
     >
       <h1 style={{ fontSize: 20, margin: 0 }}>Macro Station</h1>
-      <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0 }}>
-        Bilgisayarındaki Macro Station sunucusunun IP adresini gir (aynı Wi-Fi'da olmalısınız).
-      </p>
-      <input
-        value={host}
-        onChange={(e) => onHostChange(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && onConnect()}
-        placeholder="192.168.1.20:9820"
-        style={{
-          width: "100%", maxWidth: 320, padding: "10px 12px", fontSize: 16, borderRadius: 8,
-          border: "1px solid #2d3136", background: "#16181c", color: "#e6e7ea",
-        }}
-      />
-      <button
-        onClick={onConnect}
-        style={{
-          padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "none",
-          background: "#3b82f6", color: "white", cursor: "pointer",
-        }}
-      >
-        Bağlan
-      </button>
-      {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>Bağlanıyor…</span>}
-      {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>Bağlantı koptu, yeniden deneniyor…</span>}
+
+      {!pairing && (
+        <>
+          <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0 }}>
+            Bilgisayarındaki Macro Station sunucusunun IP adresini gir (aynı Wi-Fi'da olmalısınız).
+          </p>
+          <input
+            value={host}
+            onChange={(e) => onHostChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onConnect()}
+            placeholder="192.168.1.20:9820"
+            style={{
+              width: "100%", maxWidth: 320, padding: "10px 12px", fontSize: 16, borderRadius: 8,
+              border: "1px solid #2d3136", background: "#16181c", color: "#e6e7ea",
+            }}
+          />
+          <button
+            onClick={onConnect}
+            style={{
+              padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "none",
+              background: "#3b82f6", color: "white", cursor: "pointer",
+            }}
+          >
+            Bağlan
+          </button>
+          {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>Bağlanıyor…</span>}
+          {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>Bağlantı koptu, yeniden deneniyor…</span>}
+        </>
+      )}
+
+      {pairing && (
+        <>
+          <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 }}>
+            Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Station düzenleyicisinde "Eşleştirme"ye tıkla ve orada
+            gösterilen 6 haneli PIN'i buraya gir.
+          </p>
+          <input
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onKeyDown={(e) => e.key === "Enter" && pin.length === 6 && onSubmitPin(pin)}
+            placeholder="000000"
+            inputMode="numeric"
+            autoFocus
+            style={{
+              width: "100%", maxWidth: 200, padding: "10px 12px", fontSize: 28, borderRadius: 8, textAlign: "center",
+              letterSpacing: ".2em", fontFamily: "ui-monospace, monospace",
+              border: "1px solid #2d3136", background: "#16181c", color: "#e6e7ea",
+            }}
+          />
+          <button
+            onClick={() => onSubmitPin(pin)}
+            disabled={pin.length !== 6}
+            style={{
+              padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "none",
+              background: pin.length === 6 ? "#3b82f6" : "#2d3136", color: "white",
+              cursor: pin.length === 6 ? "pointer" : "default",
+            }}
+          >
+            Eşleştir
+          </button>
+        </>
+      )}
     </div>
   );
 }

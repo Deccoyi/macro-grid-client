@@ -1,0 +1,54 @@
+# ============================================================
+# Node / TypeScript (root app + packages/renderer)
+# ============================================================
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tgz
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# Android (android/) — a generated native project; only hand-edited
+# files (AndroidManifest.xml, build.gradle, res/, gradlew*) are meant to be
+# tracked. The `build/` pattern above already covers Gradle's own build/
+# output dirs (app/build, capacitor-cordova-android-plugins/build, ...).
+# ============================================================
+android/.gradle/
+android/local.properties
+android/.cxx/
+android/**/*.iml
+# Copied in by `cap sync` from the web build — regenerate, don't commit.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+# Debug/release APK & AAB output and signing keys — large/sensitive binaries.
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+
+# ============================================================
+# OS / editor / IDE
+# ============================================================
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

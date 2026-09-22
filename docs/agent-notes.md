@@ -2,7 +2,21 @@
 
 Bu projede çalışan AI agent'lar (ve geliştiriciler) için bağlam, kurallar ve bilinen tuzaklar. Genel plan için: [plan.md](plan.md). Plan değiştikçe ve yeni notlar çıktıkça bu klasör güncellenmeli.
 
-## Durum (2026-09-22)
+> **Repo bölündü (2026-09-22):** Bu repo **client** (telefon/tablet) tarafı ve server'dan (`https://github.com/Deccoyi/macro-station`) bağımsız sürümleniyor. Paylaşılan grid/widget render motoru (`packages/renderer`) her iki repoda da **bağımsız birer kopya** — kasıtlı bir karar, senkronize tutulmuyor. Aşağıdaki "Durum" bölümü büyük ölçüde bölünmeden ÖNCEki (tek repo, server ağırlıklı) tarihsel kayıt; bu repo için **güncel durum** hemen altındaki "Client repo durumu" bölümünde.
+
+## Client repo durumu (2026-09-22, bölünmeden sonra)
+- **Stage 5 iskeleti:** Capacitor + React + TS uygulaması (Capacitor 8.5.2). `src/App.tsx` — IP girip bağlanma ekranı + `@macro/renderer` ile aynı grid'i çizen ana ekran. `src/ws/connection.ts` — `ServerConnection` sınıfı: hello/welcome/layout.full/widget.state/profiles.list, exponential backoff reconnect. `android/` platformu eklendi, `assembleDebug` bir kez başarıyla derlendi (henüz gerçek cihaz/emülatörde çalıştırılmadı).
+- **Profil çekmecesi tamam:** kenardan swipe + her zaman görünen ince tutamaç ile açılıyor, sunucunun `profiles.list` mesajıyla dolduruluyor, seçilince `profile.change` gönderip anında geçiyor. Gerçek sunucuya karşı uçtan uca doğrulandı (bkz. server repo'nun `ClientHub.OnHelloAsync`/`SessionDeviceController.SwitchProfileAsync`'i).
+- **PIN eşleştirme tamam:** `ConnectScreen` artık sunucudan `pairing_required` hatası gelince PIN girişi gösteriyor; başarılı eşleşmede sunucunun verdiği kalıcı token host'a özel (`macro-station.token.<host>`) `localStorage`'a yazılıyor, bir daha PIN sorulmuyor. **Pairing her zaman önbelleğin önüne geçer** — cache'li bir layout varken bile `pairing_required` durumunda zorla `ConnectScreen`'e dönülüyor (aksi halde kullanıcı PIN istendiğini fark etmeden bayat bir grid'e bakar).
+- **Offline/son-layout önbelleği tamam:** her `layout.full` host'a özel (`macro-station.layoutCache.<host>`) `localStorage`'a yazılıyor. Soğuk başlangıçta (uygulama yeniden açılınca, salt canlı yeniden bağlanmada değil — o zaten profile state'i korur) son bilinen grid anında render ediliyor, rozet "Çevrimdışı · önbellek" oluyor. Sunucuyu gerçekten kapatıp açarak doğrulandı.
+- **Keep-awake tamam:** `@capacitor-community/keep-awake`, bir profil yüklüyken ekran uyumuyor.
+- **Bulunan ve düzeltilen gerçek buglar (test sırasında):**
+  - `ButtonContent`'te ikon üstte/altta iken kapsayıcının `flex-direction`'ı değişiyordu, hizalama (`align`/`vAlign`) eksenleri karışıyordu ("üste yasla" dedin, sola yasladı). İkon+metin artık kendi iç kutusunda (`.ms-content-inner`), dış kutu her zaman doğru eksende hizalıyor. Server repo'suyla senkron tutuldu (aynı fix orada da var, kopyalar bağımsız ama bu bug ikisinde de vardı).
+  - React 18 StrictMode'un efekti geliştirme modunda iki kez çalıştırması yüzünden, eski (iptal edilmiş) `ServerConnection`'ın gecikmeli `onclose`'u yeni bağlantı zaten "connected" iken durumu "disconnected"a çekebiliyordu. `ServerConnection.destroyed` bayrağı eklendi, `disconnect()`'ten sonra hiçbir event handler `this.events`'e dokunmuyor.
+  - PIN ile eşleştikten sonra durum "pairing_required"da takılı kalıyordu (veri akmasına rağmen "Çevrimdışı" gösteriyordu) — `welcome` mesajı artık her zaman durumu "connected"a çekiyor.
+- **Henüz yok:** mDNS/QR otomatik eşleştirme (native Android NSD köprüsü gerektiren bir Capacitor plugin'i yazmak gerekiyor — ayrı, büyük bir iş), kiosk modu, gerçek cihaz/emülatör testi (şimdiye kadar sadece tarayıcıda `npm run dev` ile test edildi), slider/knob'un gerçek çift yönlü değer akışı.
+
+## Durum (2026-09-22, bölünmeden ÖNCE — tarihsel)
 - **Aşama 1 server tarafı tamam:** WebSocket (`/ws`, port 9820), `hello` → `welcome` + `layout.full`, `widget.down/up` → aksiyon, `core.hotkey` + `core.typeText` aksiyonları, JSON profil deposu, tray uygulaması, dosya logları, geçici test sayfası (`server/src/MacroStation.Host/wwwroot/index.html`).
 - 18 birim testi geçiyor (`dotnet test server/MacroStation.slnx`).
 - **Henüz yok:** kimlik doğrulama/eşleştirme (Aşama 5), `client/` projesi, editör, değişkenler, plugin'ler.

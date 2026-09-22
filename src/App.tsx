@@ -341,7 +341,7 @@ function loadHandleFraction(): number {
 /**
  * The always-visible drawer handle: on the right edge (not left — that's Android gesture-nav's own
  * back-swipe zone), a plain tap opens the drawer, and press-and-drag vertically moves the handle itself
- * (Samsung Edge-panel style), remembered per device in localStorage. Also tells Android to exclude this
+ * (a draggable edge-panel handle), remembered per device in localStorage. Also tells Android to exclude this
  * exact screen rect from its own edge-swipe-back gesture (see gestureExclusion.ts) so the two don't
  * fight over the same touch — without that, a touch landing in the OS's back-gesture strip here can be
  * intercepted before this component ever sees it, on Android 10+ at least.

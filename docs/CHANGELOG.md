@@ -6,6 +6,7 @@ Bu repo, Macro Station'ın **client** (telefon/tablet) tarafıdır ve server'dan
 
 ## [Unreleased]
 ### Added
+- Offline/son-layout önbelleği: her `layout.full` host'a özel olarak `localStorage`'a yazılıyor; soğuk başlangıçta (uygulama yeniden açılınca, salt canlı yeniden bağlanmada değil) sunucuya ulaşılamasa bile son bilinen grid anında gösteriliyor, rozet "Çevrimdışı · önbellek" yazıyor. Eşleştirme her zaman önbelleğin önüne geçiyor — PIN gerekiyorsa önbellek varken de bağlanma ekranı gösteriliyor. Gerçek sunucuyu kapatıp açarak uçtan uca doğrulandı.
 - **PIN ile eşleştirme:** ilk bağlantıda sunucu editöründe gösterilen 6 haneli PIN isteniyor; eşleşince sunucudan gelen kalıcı token host'a özel olarak `localStorage`'a kaydediliyor, bir daha PIN sorulmuyor. `ConnectScreen` artık `pairing_required` durumunda PIN girişi gösteriyor. Gerçek sunucuya karşı uçtan uca doğrulandı.
 - Aşama 5 başladı: Capacitor + React + TS uygulaması (Capacitor 8.5.2). IP girip bağlanma ekranı, `@macro/renderer` ile aynı grid'i çizen ana ekran, WebSocket reconnect (exponential backoff). `android/` platformu eklendi, ilk `assembleDebug` build'i başarılı.
 - `packages/renderer`: paylaşılan grid/widget render motoru — `Grid`, `WidgetView`, `ShadowHost`, `sanitizeWidgetCss`, `usePressGesture` (press/longPress/doubleTap/haptic).

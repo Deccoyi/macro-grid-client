@@ -10,12 +10,31 @@ const SWIPE_OPEN_THRESHOLD_PX = 60;
 
 /** One pairing token per server host, so switching between two Macro Station servers doesn't require re-pairing every time you go back to one you've already paired with. */
 const tokenKey = (host: string) => `macro-station.token.${host}`;
+/** Last-known layout per host, so a cold start (app relaunch, not just a live reconnect) shows the
+ * deck immediately instead of the connect screen while the first real layout.full is still in flight. */
+const layoutCacheKey = (host: string) => `macro-station.layoutCache.${host}`;
+
+interface LayoutCache {
+  profile: Profile;
+  pageId: string;
+}
+
+function loadLayoutCache(host: string): LayoutCache | null {
+  if (!host) return null;
+  try {
+    const raw = localStorage.getItem(layoutCacheKey(host));
+    return raw ? (JSON.parse(raw) as LayoutCache) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function App() {
   const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [pageId, setPageId] = useState<string | null>(null);
+  const [usingCache, setUsingCache] = useState(() => loadLayoutCache(host) !== null);
+  const [profile, setProfile] = useState<Profile | null>(() => loadLayoutCache(host)?.profile ?? null);
+  const [pageId, setPageId] = useState<string | null>(() => loadLayoutCache(host)?.pageId ?? null);
   const [states, setStates] = useState<Record<string, WidgetState>>({});
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -24,9 +43,12 @@ export function App() {
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
     localStorage.setItem(HOST_KEY, targetHost);
-    setProfile(null);
     setStates({});
     setProfiles([]);
+    const cached = loadLayoutCache(targetHost);
+    setProfile(cached?.profile ?? null);
+    setPageId(cached?.pageId ?? null);
+    setUsingCache(cached !== null);
 
     const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", localStorage.getItem(tokenKey(targetHost)), {
       onStatusChange: setStatus,
@@ -34,6 +56,12 @@ export function App() {
         setProfile(nextProfile);
         setPageId(nextPageId);
         setStates({});
+        setUsingCache(false);
+        try {
+          localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: nextProfile, pageId: nextPageId } satisfies LayoutCache));
+        } catch {
+          // Storage full or unavailable (private mode) — the cache is a nice-to-have, not essential.
+        }
       },
       onWidgetState: (state) => {
         setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
@@ -46,8 +74,8 @@ export function App() {
   }, []);
 
   // Reconnect automatically to the last known server on launch, like the plan's "reconnect + cache"
-  // requirement — this only covers the WS layer for now; asset/layout caching across cold starts is
-  // a follow-up increment.
+  // requirement. The very first render already shows any cached layout (see the useState initializers
+  // above) so a cold start looks like the deck immediately, not the connect screen.
   useEffect(() => {
     if (host) connect(host);
     return () => connectionRef.current?.disconnect();
@@ -67,7 +95,9 @@ export function App() {
 
   const page = profile?.pages.find((p) => p.id === pageId) ?? profile?.pages[0];
 
-  if (!profile || !page) {
+  // Pairing always wins over a cached layout — a stale grid with no indication a PIN is needed would
+  // just look broken ("Çevrimdışı" forever) instead of telling the user what to do about it.
+  if (!profile || !page || status === "pairing_required") {
     return (
       <ConnectScreen
         host={host}
@@ -83,6 +113,7 @@ export function App() {
     <DeckScreen
       page={page}
       status={status}
+      usingCache={usingCache}
       states={states}
       profiles={profiles}
       currentProfileId={profile.id}
@@ -100,6 +131,7 @@ export function App() {
 function DeckScreen({
   page,
   status,
+  usingCache,
   states,
   profiles,
   currentProfileId,
@@ -110,6 +142,7 @@ function DeckScreen({
 }: {
   page: Profile["pages"][number];
   status: ConnectionStatus;
+  usingCache: boolean;
   states: Record<string, WidgetState>;
   profiles: ProfileSummary[];
   currentProfileId: string;
@@ -142,7 +175,7 @@ function DeckScreen({
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {status !== "connected" && <StatusBadge status={status} />}
+      {status !== "connected" && <StatusBadge status={status} usingCache={usingCache} />}
 
       {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss. */}
       {!drawerOpen && profiles.length > 1 && (
@@ -331,7 +364,8 @@ function ConnectScreen({
   );
 }
 
-function StatusBadge({ status }: { status: ConnectionStatus }) {
+function StatusBadge({ status, usingCache }: { status: ConnectionStatus; usingCache: boolean }) {
+  const label = status === "connecting" ? "Bağlanıyor…" : usingCache ? "Çevrimdışı · önbellek" : "Çevrimdışı";
   return (
     <div
       style={{
@@ -339,7 +373,7 @@ function StatusBadge({ status }: { status: ConnectionStatus }) {
         borderRadius: 999, background: "rgba(0,0,0,.6)", color: status === "connecting" ? "#facc15" : "#ef4444",
       }}
     >
-      {status === "connecting" ? "Bağlanıyor…" : "Çevrimdışı"}
+      {label}
     </div>
   );
 }

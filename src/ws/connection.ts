@@ -15,12 +15,22 @@ interface LayoutFullData {
   pageId: string;
 }
 
+export interface ProfileSummary {
+  id: string;
+  name: string;
+}
+
+interface ProfilesListData {
+  profiles: ProfileSummary[];
+}
+
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export interface ConnectionEvents {
   onStatusChange: (status: ConnectionStatus) => void;
   onLayout: (profile: Profile, pageId: string) => void;
   onWidgetState: (state: WidgetState) => void;
+  onProfiles: (profiles: ProfileSummary[]) => void;
 }
 
 const CLIENT_VERSION = "0.1.0";
@@ -36,6 +46,15 @@ export class ServerConnection {
   private backoffMs = 500;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Set once `disconnect()` is called and never cleared. Without this, a stale socket's delayed
+   * `onclose` (closing takes a round trip, it doesn't fire synchronously) can still land after a
+   * *newer* ServerConnection has already connected — e.g. React 18 StrictMode deliberately mounts an
+   * effect, cleans it up, then mounts it again in dev, so `connect()` briefly creates two instances.
+   * The old instance's late "disconnected" would otherwise stomp the new instance's "connected" in
+   * the UI. Every event handler below checks this before touching `this.events`.
+   */
+  private destroyed = false;
 
   constructor(
     private readonly host: string,
@@ -51,6 +70,7 @@ export class ServerConnection {
 
   disconnect(): void {
     this.closedByUser = true;
+    this.destroyed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.socket?.close();
   }
@@ -61,11 +81,13 @@ export class ServerConnection {
   }
 
   private open(): void {
+    if (this.destroyed) return;
     this.events.onStatusChange("connecting");
     const socket = new WebSocket(`ws://${this.host}/ws`);
     this.socket = socket;
 
     socket.onopen = () => {
+      if (this.destroyed) return;
       this.backoffMs = 500;
       this.send("hello", {
         deviceId: this.deviceId,
@@ -76,9 +98,13 @@ export class ServerConnection {
       this.events.onStatusChange("connected");
     };
 
-    socket.onmessage = (ev) => this.handleMessage(ev.data);
+    socket.onmessage = (ev) => {
+      if (this.destroyed) return;
+      this.handleMessage(ev.data);
+    };
 
     socket.onclose = () => {
+      if (this.destroyed) return;
       this.events.onStatusChange("disconnected");
       if (this.closedByUser) return;
       this.reconnectTimer = setTimeout(() => this.open(), this.backoffMs);
@@ -105,8 +131,16 @@ export class ServerConnection {
       case "widget.state":
         this.events.onWidgetState(envelope.data as WidgetState);
         break;
+      case "profiles.list":
+        this.events.onProfiles((envelope.data as ProfilesListData).profiles);
+        break;
       default:
         break;
     }
+  }
+
+  /** Requests the server switch this device to a different profile (e.g. from the profile drawer). */
+  changeProfile(profileId: string): void {
+    this.send("profile.change", { profileId });
   }
 }

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
 import { getDeviceId } from "./deviceId";
-import { ConnectionStatus, ServerConnection } from "./ws/connection";
+import { ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 
 const HOST_KEY = "macro-station.host";
+const EDGE_SWIPE_ZONE_PX = 24;
+const SWIPE_OPEN_THRESHOLD_PX = 60;
 
 export function App() {
   const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
@@ -11,6 +14,8 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [pageId, setPageId] = useState<string | null>(null);
   const [states, setStates] = useState<Record<string, WidgetState>>({});
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const connectionRef = useRef<ServerConnection | null>(null);
 
   const connect = useCallback((targetHost: string) => {
@@ -18,6 +23,7 @@ export function App() {
     localStorage.setItem(HOST_KEY, targetHost);
     setProfile(null);
     setStates({});
+    setProfiles([]);
 
     const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", {
       onStatusChange: setStatus,
@@ -29,6 +35,7 @@ export function App() {
       onWidgetState: (state) => {
         setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
       },
+      onProfiles: setProfiles,
     });
     connectionRef.current = connection;
     connection.connect();
@@ -43,9 +50,20 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The phone is meant to sit as a always-on deck while in use — keep the screen from sleeping
+  // whenever we're actually showing one (connected or not, as long as a profile has loaded once).
+  // Fails silently on platforms/browsers without the plugin (Capacitor's web shim no-ops).
+  useEffect(() => {
+    if (!profile) return;
+    KeepAwake.keepAwake().catch(() => {});
+    return () => {
+      KeepAwake.allowSleep().catch(() => {});
+    };
+  }, [profile]);
+
   const page = profile?.pages.find((p) => p.id === pageId) ?? profile?.pages[0];
 
-  if (!page) {
+  if (!profile || !page) {
     return (
       <ConnectScreen
         host={host}
@@ -57,8 +75,83 @@ export function App() {
   }
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "#0b0d10", padding: 10, boxSizing: "border-box" }}>
+    <DeckScreen
+      page={page}
+      status={status}
+      states={states}
+      profiles={profiles}
+      currentProfileId={profile.id}
+      drawerOpen={drawerOpen}
+      onDrawerOpenChange={setDrawerOpen}
+      onPickProfile={(id) => {
+        connectionRef.current?.changeProfile(id);
+        setDrawerOpen(false);
+      }}
+      onWidgetEvent={(type, widgetId) => connectionRef.current?.send(type, { pageId: page.id, widgetId })}
+    />
+  );
+}
+
+function DeckScreen({
+  page,
+  status,
+  states,
+  profiles,
+  currentProfileId,
+  drawerOpen,
+  onDrawerOpenChange,
+  onPickProfile,
+  onWidgetEvent,
+}: {
+  page: Profile["pages"][number];
+  status: ConnectionStatus;
+  states: Record<string, WidgetState>;
+  profiles: ProfileSummary[];
+  currentProfileId: string;
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
+  onPickProfile: (id: string) => void;
+  onWidgetEvent: (type: "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap", widgetId: string) => void;
+}) {
+  const touchStart = useRef<{ x: number; y: number; fromEdge: boolean } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0]!;
+    touchStart.current = { x: t.clientX, y: t.clientY, fromEdge: t.clientX <= EDGE_SWIPE_ZONE_PX };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0]!;
+    const dx = t.clientX - start.x;
+    const dy = Math.abs(t.clientY - start.y);
+    if (dy > 40) return;
+    if (start.fromEdge && dx > SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(true);
+    else if (drawerOpen && dx < -SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(false);
+  };
+
+  return (
+    <div
+      style={{ width: "100vw", height: "100vh", background: "#0b0d10", padding: 10, boxSizing: "border-box", position: "relative", overflow: "hidden" }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {status !== "connected" && <StatusBadge status={status} />}
+
+      {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss. */}
+      {!drawerOpen && profiles.length > 1 && (
+        <button
+          aria-label="Profilleri göster"
+          onClick={() => onDrawerOpenChange(true)}
+          style={{
+            position: "fixed", left: 0, top: "50%", transform: "translateY(-50%)", zIndex: 90,
+            width: 14, height: 56, borderRadius: "0 8px 8px 0", border: "none",
+            background: "rgba(255,255,255,.12)", cursor: "pointer", padding: 0,
+          }}
+        />
+      )}
+
       <Grid
         page={page}
         gap="8px"
@@ -72,15 +165,73 @@ export function App() {
               liveValue={state?.value}
               liveStyle={state?.style}
               haptics
-              onPress={() => connectionRef.current?.send("widget.down", { pageId: page.id, widgetId: widget.id })}
-              onRelease={() => connectionRef.current?.send("widget.up", { pageId: page.id, widgetId: widget.id })}
-              onLongPress={() => connectionRef.current?.send("widget.longPress", { pageId: page.id, widgetId: widget.id })}
-              onDoubleTap={() => connectionRef.current?.send("widget.doubleTap", { pageId: page.id, widgetId: widget.id })}
+              onPress={() => onWidgetEvent("widget.down", widget.id)}
+              onRelease={() => onWidgetEvent("widget.up", widget.id)}
+              onLongPress={() => onWidgetEvent("widget.longPress", widget.id)}
+              onDoubleTap={() => onWidgetEvent("widget.doubleTap", widget.id)}
             />
           );
         }}
       />
+
+      <ProfileDrawer
+        open={drawerOpen}
+        profiles={profiles}
+        currentProfileId={currentProfileId}
+        onClose={() => onDrawerOpenChange(false)}
+        onPick={onPickProfile}
+      />
     </div>
+  );
+}
+
+function ProfileDrawer({
+  open,
+  profiles,
+  currentProfileId,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  profiles: ProfileSummary[];
+  currentProfileId: string;
+  onClose: () => void;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 100,
+          opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none", transition: "opacity .2s ease",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed", top: 0, bottom: 0, left: 0, width: "78%", maxWidth: 300, zIndex: 101,
+          background: "#16181c", borderRight: "1px solid #2d3136", boxSizing: "border-box", padding: 16,
+          transform: open ? "translateX(0)" : "translateX(-100%)", transition: "transform .2s ease",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}
+      >
+        <div style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", padding: "4px 10px 12px" }}>Profiller</div>
+        {profiles.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onPick(p.id)}
+            style={{
+              display: "block", width: "100%", textAlign: "left", padding: "12px 10px", borderRadius: 8,
+              border: "none", cursor: "pointer", fontSize: 15,
+              background: p.id === currentProfileId ? "rgba(59,130,246,.18)" : "transparent",
+              color: p.id === currentProfileId ? "#60a5fa" : "#e6e7ea",
+            }}
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

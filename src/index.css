@@ -1,0 +1,33 @@
+/* The deck fills the whole screen and nothing on it should ever scroll or bounce — without this,
+   dragging past a widget's edge lets the WebView's default rubber-band/overscroll behavior pan the
+   page, exposing the browser's white default background at the edges. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  background: #0b0d10;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* @capacitor-mlkit/barcode-scanning renders the camera preview as a native layer BEHIND the
+   WebView — startScan() doesn't show anything until the WebView's own content gets out of the
+   way. This hides everything except the scan overlay itself (which opts back in explicitly). */
+body.barcode-scanner-active {
+  visibility: hidden;
+}
+
+.barcode-scanner-modal {
+  visibility: visible;
+}

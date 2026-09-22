@@ -105,6 +105,12 @@ export interface Page {
   name: string;
   cols: number;
   rows: number;
+  /** Gap between grid cells, in CSS px. Optional for backward compatibility with older data — falls back to Grid's own default. */
+  gap?: number;
+  /** Padding around the grid, in CSS px. Optional for backward compatibility with older data. */
+  padding?: number;
+  /** How the grid is placed within the page when it doesn't fill the available space. Optional for backward compatibility with older data. */
+  alignment?: "start" | "center" | "end";
   widgets: Widget[];
 }
 

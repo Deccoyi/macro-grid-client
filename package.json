@@ -15,10 +15,11 @@
     "cap:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "^8.2.1",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
-    "@capacitor-community/keep-awake": "^8.0.1",
     "@macro/renderer": "file:packages/renderer",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

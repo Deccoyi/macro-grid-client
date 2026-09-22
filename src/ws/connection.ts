@@ -15,6 +15,10 @@ interface LayoutFullData {
   pageId: string;
 }
 
+interface PageShowData {
+  pageId: string;
+}
+
 interface WelcomeData {
   serverName: string;
   serverVersion: string;
@@ -40,6 +44,10 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "pa
 export interface ConnectionEvents {
   onStatusChange: (status: ConnectionStatus) => void;
   onLayout: (profile: Profile, pageId: string) => void;
+  /** Server pushed a page change for a `core.page` action (goto/next/prev/back) fired from any device
+   * on this profile — the button that triggered it doesn't get a special-cased response, everyone
+   * showing this profile just gets told which page to show now. */
+  onPageChange: (pageId: string) => void;
   onWidgetState: (state: WidgetState) => void;
   onProfiles: (profiles: ProfileSummary[]) => void;
   /** A brand-new token was issued (first pairing, or a re-pair) — the caller must persist it: it
@@ -163,6 +171,11 @@ export class ServerConnection {
       case "layout.full": {
         const data = envelope.data as LayoutFullData;
         this.events.onLayout(data.profile, data.pageId);
+        break;
+      }
+      case "page.show": {
+        const data = envelope.data as PageShowData;
+        this.events.onPageChange(data.pageId);
         break;
       }
       case "widget.state":

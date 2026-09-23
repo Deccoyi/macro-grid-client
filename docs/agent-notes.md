@@ -93,7 +93,7 @@ Bu projede çalışan AI agent'lar (ve geliştiriciler) için bağlam, kurallar 
 
 **Varsayılan profil:** Kullanıcının diskindeki mevcut `Varsayılan` profil otomatik üretildi, elle düzenlenmedi. Yeni varsayılan profille değiştirilebilir. Yeni profilde olacaklar:
 - Sayfa 1: saat (2x2 label, `{system.time|HH:mm:ss}` + tarih), CPU ve RAM label'ları, "Sessiz" toggle'ı (volumemute), "Sayfa 2 →" butonu
-- Sayfa 2: "← Geri", "Notepad aç" (`core.open`), "Tümünü kopyala" makrosu (ctrl+a → delay 50 → ctrl+c)
+- Sayfa 2: "← Geri", "Metin editörü aç" (`core.open`), "Tümünü kopyala" makrosu (ctrl+a → delay 50 → ctrl+c)
 
 **Testler:** TemplateRenderer (formatlar, escape, eksik değişken), VariableStore (aynı değer event tetiklemez), sahte `IDeviceController` ile `core.page`.
 

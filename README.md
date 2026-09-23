@@ -14,9 +14,9 @@ Sunucu (arka uç + WebView2 editörü) ayrı bir repoda: **https://github.com/De
 
 ## Durum
 
-**Aşama 5 tamam (gerçek cihaz testi hariç).** Şu an çalışan: sunucu IP'sini elle girip veya QR kod tarayarak bağlanma, PIN ile eşleştirme, sunucudaki profilin sayfasını çizme, buton/toggle basış-bırakış-uzun basış-çift dokunuş olaylarını sunucuya iletme, profil seçim çekmecesi (drawer), sayfa geçişi (swipe), slider/knob'un gerçek çift yönlü değer akışı, kiosk modu + yön kilidi (drawer içindeki Ayarlar panelinden), ekranı uyanık tutma (keep-awake), bağlantı koptuğunda otomatik yeniden bağlanma (exponential backoff), offline/son-layout önbelleği.
+**Aşama 5 tamam, gerçek cihaz testi dahil.** Şu an çalışan: sunucu IP'sini elle girip veya QR kod tarayarak bağlanma, PIN ile eşleştirme, sunucudaki profilin sayfasını çizme, buton/toggle basış-bırakış-uzun basış-çift dokunuş olaylarını sunucuya iletme, profil seçim çekmecesi (drawer), sayfa geçişi (swipe), slider/knob'un gerçek çift yönlü değer akışı, kiosk modu + yön kilidi (drawer içindeki Ayarlar panelinden), ekranı uyanık tutma (keep-awake), bağlantı koptuğunda otomatik yeniden bağlanma (exponential backoff), offline/son-layout önbelleği. Gerçek bir Android cihazda (`adb install` ile debug APK) doğrulandı: LAN üzerinden yeniden bağlanma, canlı değişken push'ı, dokunma girişi.
 
-**Henüz yok:** mDNS ile otomatik keşif (IP hâlâ elle girilir ya da QR ile taranır), gerçek cihaz/emülatör testi (USB debug).
+**Henüz yok:** mDNS ile otomatik keşif (IP hâlâ elle girilir ya da QR ile taranır).
 
 Ayrıntılı yol haritası için sunucu repo'sundaki [docs/plan.md](docs/plan.md)'ye bakın (Aşama 5 bu repoyu kapsar).
 

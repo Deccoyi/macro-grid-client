@@ -12,6 +12,7 @@ New features and fixes in the Macro Station phone app. For technical details, se
 - **Full screen and orientation lock:** Turn them on in the Settings panel.
 
 ### Changed
+- Buttons, toggles and labels can change their text and icon depending on a value.
 - Edits from the editor now reach your phone as small updates, so the deck no longer flashes or resets while you edit.
 - Icons are downloaded once and kept on the phone. Reconnecting is faster.
 

@@ -234,9 +234,13 @@ export class ServerConnection {
         this.events.onPageChange(data.pageId);
         break;
       }
-      case "widget.state":
-        this.events.onWidgetState(envelope.data as WidgetState);
+      case "widget.state": {
+        // A dynamic icon arrives as an asset reference like the ones in a layout.
+        const state = envelope.data as WidgetState;
+        await this.ensureAssets(state.style);
+        this.events.onWidgetState(resolveAssetRefs(state));
         break;
+      }
       case "profiles.list": {
         const data = envelope.data as ProfilesListData;
         this.events.onProfiles(data.profiles, data.autoSwitch ?? null);
@@ -262,7 +266,7 @@ export class ServerConnection {
 
   /** Resolves once every asset the layout references is cached, asking the server for the ones that are not.
    * A hash the server no longer has (or a slow server) only leaves that icon blank; it never blocks the deck. */
-  private async ensureAssets(layout: Profile): Promise<void> {
+  private async ensureAssets(layout: unknown): Promise<void> {
     const missing = missingAssets(layout);
     if (missing.length === 0) return;
 

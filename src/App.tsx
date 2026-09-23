@@ -4,15 +4,32 @@ import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/rendere
 import { getDeviceId } from "./deviceId";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "./gestureExclusion";
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
+import { SettingsButton, SettingsPanel } from "./SettingsPanel";
+import { applySettings, loadSettings, saveSettings, type AppSettings } from "./settings";
 import { ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 
 const HOST_KEY = "macro-station.host";
-const EDGE_SWIPE_ZONE_PX = 24;
+const EDGE_SWIPE_ZONE_PX = 56;
 const SWIPE_OPEN_THRESHOLD_PX = 60;
+/** A swipe across most of the screen width reads as "change page" rather than a stray drag — well past
+ * anything a slider/knob drag (bounded to that one widget's cell) would ever cover, so the two gestures
+ * don't fight once widgets grow their own drag handling. */
+const PAGE_SWIPE_THRESHOLD_PX = 90;
 const HANDLE_Y_KEY = "macro-station.drawerHandleY";
 const HANDLE_WIDTH_PX = 18;
 const HANDLE_HEIGHT_PX = 64;
-const HANDLE_DRAG_THRESHOLD_PX = 10;
+// A quick swipe over the handle (to open the drawer) must never reposition it — only a deliberate
+// press-and-hold does. HANDLE_HOLD_MS is how long a still touch has to be held before it's treated as
+// "start dragging"; HANDLE_HOLD_CANCEL_PX is how far the finger may wander during that hold before it's
+// treated as a swipe/tap instead and the hold is cancelled.
+const HANDLE_HOLD_MS = 320;
+const HANDLE_HOLD_CANCEL_PX = 12;
+// The exclusion zone is deliberately bigger than the visible handle: a touch that lands just outside
+// the button but still inside the OS's back-gesture strip would otherwise get swallowed by Android
+// before onTouchStart/the edge-swipe-open logic ever sees it. The handle itself stays
+// HANDLE_WIDTH_PX/HANDLE_HEIGHT_PX; width matches EDGE_SWIPE_ZONE_PX so nothing falls in a dead zone
+// where the OS gesture is cancelled but our own swipe-open check doesn't count it as "from the edge".
+const GESTURE_ZONE_HEIGHT_PX = 140;
 
 /** One pairing token per server host, so switching between two Macro Station servers doesn't require re-pairing every time you go back to one you've already paired with. */
 const tokenKey = (host: string) => `macro-station.token.${host}`;
@@ -42,8 +59,15 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(() => loadLayoutCache(host)?.profile ?? null);
   const [pageId, setPageId] = useState<string | null>(() => loadLayoutCache(host)?.pageId ?? null);
   const [states, setStates] = useState<Record<string, WidgetState>>({});
+  /** Local optimistic slider/knob position while dragging (and right after a commit, until the server's
+   * own widget.state — if this widget is bound to a variable — confirms/overrides it). Cleared per-widget
+   * the moment a real widget.state arrives for it, so a variable that's also changing from elsewhere
+   * (another device, Windows itself) doesn't get stuck showing a stale local drag forever. */
+  const [dragValues, setDragValues] = useState<Record<string, number>>({});
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
   const connectionRef = useRef<ServerConnection | null>(null);
   /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
@@ -87,12 +111,27 @@ export function App() {
       },
       onWidgetState: (state) => {
         setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
+        if (state.value !== undefined) {
+          setDragValues((prev) => {
+            if (!(state.widgetId in prev)) return prev;
+            const next = { ...prev };
+            delete next[state.widgetId];
+            return next;
+          });
+        }
       },
       onProfiles: setProfiles,
       onPaired: (token) => localStorage.setItem(tokenKey(targetHost), token),
     });
     connectionRef.current = connection;
     connection.connect();
+  }, []);
+
+  // Android doesn't remember immersive mode / orientation lock across a cold start on its own —
+  // re-push the last saved choice every launch.
+  useEffect(() => {
+    applySettings(appSettings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconnect automatically to the last known server on launch, like the plan's "reconnect + cache"
@@ -162,6 +201,8 @@ export function App() {
       status={status}
       usingCache={usingCache}
       states={states}
+      dragValues={dragValues}
+      onDragValuesChange={setDragValues}
       profiles={profiles}
       currentProfileId={profile.id}
       drawerOpen={drawerOpen}
@@ -171,6 +212,16 @@ export function App() {
         setDrawerOpen(false);
       }}
       onWidgetEvent={(type, widgetId) => connectionRef.current?.send(type, { pageId: page.id, widgetId })}
+      onWidgetValueCommit={(widgetId, value) => connectionRef.current?.send("widget.value", { pageId: page.id, widgetId, value })}
+      onSwipeNextPage={() => connectionRef.current?.nextPage()}
+      onSwipePrevPage={() => connectionRef.current?.prevPage()}
+      settingsOpen={settingsOpen}
+      onSettingsOpenChange={setSettingsOpen}
+      appSettings={appSettings}
+      onAppSettingsChange={(next) => {
+        setAppSettings(next);
+        saveSettings(next);
+      }}
     />
   );
 }
@@ -180,23 +231,41 @@ function DeckScreen({
   status,
   usingCache,
   states,
+  dragValues,
+  onDragValuesChange,
   profiles,
   currentProfileId,
   drawerOpen,
   onDrawerOpenChange,
   onPickProfile,
   onWidgetEvent,
+  onWidgetValueCommit,
+  onSwipeNextPage,
+  onSwipePrevPage,
+  settingsOpen,
+  onSettingsOpenChange,
+  appSettings,
+  onAppSettingsChange,
 }: {
   page: Profile["pages"][number];
   status: ConnectionStatus;
   usingCache: boolean;
   states: Record<string, WidgetState>;
+  dragValues: Record<string, number>;
+  onDragValuesChange: (updater: (prev: Record<string, number>) => Record<string, number>) => void;
   profiles: ProfileSummary[];
   currentProfileId: string;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
   onPickProfile: (id: string) => void;
   onWidgetEvent: (type: "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap", widgetId: string) => void;
+  onWidgetValueCommit: (widgetId: string, value: number) => void;
+  onSwipeNextPage: () => void;
+  onSwipePrevPage: () => void;
+  settingsOpen: boolean;
+  onSettingsOpenChange: (open: boolean) => void;
+  appSettings: AppSettings;
+  onAppSettingsChange: (settings: AppSettings) => void;
 }) {
   // The drawer now lives on the right (see ProfileDrawer/DrawerHandle below — left conflicted with
   // Android gesture-nav's own left-edge back swipe), so the open swipe starts near the right edge and
@@ -217,6 +286,12 @@ function DeckScreen({
     if (dy > 40) return;
     if (start.fromEdge && dx < -SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(true);
     else if (drawerOpen && dx > SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(false);
+    // A long, mostly-horizontal swipe that isn't the drawer's own edge-open/close gesture changes page —
+    // same "next/prev wraps around" behavior as a core.page button, just triggered by the deck itself.
+    else if (!start.fromEdge && !drawerOpen) {
+      if (dx <= -PAGE_SWIPE_THRESHOLD_PX) onSwipeNextPage();
+      else if (dx >= PAGE_SWIPE_THRESHOLD_PX) onSwipePrevPage();
+    }
   };
 
   return (
@@ -241,8 +316,9 @@ function DeckScreen({
     >
       {status !== "connected" && <StatusBadge status={status} usingCache={usingCache} />}
 
-      {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss. */}
-      {!drawerOpen && profiles.length > 1 && <DrawerHandle onOpen={() => onDrawerOpenChange(true)} />}
+      {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss.
+          Shown even with a single profile now — it's also the only way to reach Ayarlar. */}
+      {!drawerOpen && <DrawerHandle onOpen={() => onDrawerOpenChange(true)} />}
 
       <Grid
         page={page}
@@ -253,13 +329,18 @@ function DeckScreen({
               widget={widget}
               liveText={state?.text}
               liveActive={state?.active}
-              liveValue={state?.value}
+              liveValue={dragValues[widget.id] ?? state?.value}
               liveStyle={state?.style}
               haptics
               onPress={() => onWidgetEvent("widget.down", widget.id)}
               onRelease={() => onWidgetEvent("widget.up", widget.id)}
               onLongPress={() => onWidgetEvent("widget.longPress", widget.id)}
               onDoubleTap={() => onWidgetEvent("widget.doubleTap", widget.id)}
+              onValueChange={(value) => onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }))}
+              onValueCommit={(value) => {
+                onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }));
+                onWidgetValueCommit(widget.id, value);
+              }}
             />
           );
         }}
@@ -271,6 +352,17 @@ function DeckScreen({
         currentProfileId={currentProfileId}
         onClose={() => onDrawerOpenChange(false)}
         onPick={onPickProfile}
+        onOpenSettings={() => {
+          onDrawerOpenChange(false);
+          onSettingsOpenChange(true);
+        }}
+      />
+
+      <SettingsPanel
+        open={settingsOpen}
+        settings={appSettings}
+        onChange={onAppSettingsChange}
+        onClose={() => onSettingsOpenChange(false)}
       />
     </div>
   );
@@ -282,12 +374,14 @@ function ProfileDrawer({
   currentProfileId,
   onClose,
   onPick,
+  onOpenSettings,
 }: {
   open: boolean;
   profiles: ProfileSummary[];
   currentProfileId: string;
   onClose: () => void;
   onPick: (id: string) => void;
+  onOpenSettings: () => void;
 }) {
   return (
     <>
@@ -323,6 +417,7 @@ function ProfileDrawer({
             {p.name}
           </button>
         ))}
+        <SettingsButton onOpen={onOpenSettings} />
       </div>
     </>
   );
@@ -340,22 +435,41 @@ function loadHandleFraction(): number {
 
 /**
  * The always-visible drawer handle: on the right edge (not left — that's Android gesture-nav's own
- * back-swipe zone), a plain tap opens the drawer, and press-and-drag vertically moves the handle itself
- * (a draggable edge-panel handle), remembered per device in localStorage. Also tells Android to exclude this
- * exact screen rect from its own edge-swipe-back gesture (see gestureExclusion.ts) so the two don't
- * fight over the same touch — without that, a touch landing in the OS's back-gesture strip here can be
- * intercepted before this component ever sees it, on Android 10+ at least.
+ * back-swipe zone). A tap, or a swipe that passes over it, opens the drawer. Repositioning the handle
+ * itself needs a deliberate press-and-hold — a quick swipe must never drag it, since a swipe's natural
+ * diagonal wobble would otherwise get misread as "start dragging" (see HANDLE_HOLD_MS below). Position
+ * is remembered per device in localStorage. Also tells Android to exclude this exact screen rect from
+ * its own edge-swipe-back gesture (see gestureExclusion.ts) so the two don't fight over the same touch —
+ * without that, a touch landing in the OS's back-gesture strip here can be intercepted before this
+ * component ever sees it, on Android 10+ at least.
  */
 function DrawerHandle({ onOpen }: { onOpen: () => void }) {
   const [topFraction, setTopFraction] = useState(loadHandleFraction);
-  const drag = useRef<{ startY: number; startFraction: number; dragging: boolean } | null>(null);
+  const topFractionRef = useRef(topFraction);
+  useEffect(() => {
+    topFractionRef.current = topFraction;
+  }, [topFraction]);
+
+  const drag = useRef<{
+    origX: number;
+    origY: number;
+    anchorX: number;
+    anchorY: number;
+    anchorFraction: number;
+    lastX: number;
+    lastY: number;
+    holdTimer: ReturnType<typeof setTimeout> | null;
+    /** Set once HANDLE_HOLD_MS has passed with the finger still near its start — only then does moving
+     * the finger reposition the handle instead of being a swipe/tap. */
+    active: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const publishZone = () => {
       setGestureExclusionZone({
-        top: topFraction * window.innerHeight - HANDLE_HEIGHT_PX / 2,
-        height: HANDLE_HEIGHT_PX,
-        width: HANDLE_WIDTH_PX,
+        top: topFraction * window.innerHeight - GESTURE_ZONE_HEIGHT_PX / 2,
+        height: GESTURE_ZONE_HEIGHT_PX,
+        width: EDGE_SWIPE_ZONE_PX,
         rightEdge: true,
       });
     };
@@ -367,26 +481,68 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
     };
   }, [topFraction]);
 
+  const cancelHold = () => {
+    const d = drag.current;
+    if (d?.holdTimer != null) {
+      clearTimeout(d.holdTimer);
+      d.holdTimer = null;
+    }
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0]!;
-    drag.current = { startY: t.clientY, startFraction: topFraction, dragging: false };
+    const state: NonNullable<typeof drag.current> = {
+      origX: t.clientX,
+      origY: t.clientY,
+      anchorX: t.clientX,
+      anchorY: t.clientY,
+      anchorFraction: topFractionRef.current,
+      lastX: t.clientX,
+      lastY: t.clientY,
+      holdTimer: null,
+      active: false,
+    };
+    state.holdTimer = setTimeout(() => {
+      state.active = true;
+      // Re-anchor to wherever the finger drifted to during the hold, so drag mode doesn't jump.
+      state.anchorY = state.lastY;
+      state.anchorFraction = topFractionRef.current;
+      try {
+        navigator.vibrate?.(15);
+      } catch {
+        // Vibration is a nice-to-have confirmation; ignore if unsupported.
+      }
+    }, HANDLE_HOLD_MS);
+    drag.current = state;
   };
+
   const onTouchMove = (e: React.TouchEvent) => {
     const d = drag.current;
     if (!d) return;
     const t = e.touches[0]!;
-    const dy = t.clientY - d.startY;
-    if (!d.dragging && Math.abs(dy) < HANDLE_DRAG_THRESHOLD_PX) return;
-    d.dragging = true;
-    setTopFraction(Math.min(0.92, Math.max(0.08, d.startFraction + dy / window.innerHeight)));
+    d.lastX = t.clientX;
+    d.lastY = t.clientY;
+    if (!d.active) {
+      if (Math.hypot(t.clientX - d.anchorX, t.clientY - d.anchorY) > HANDLE_HOLD_CANCEL_PX) cancelHold();
+      return;
+    }
+    setTopFraction(Math.min(0.92, Math.max(0.08, d.anchorFraction + (t.clientY - d.anchorY) / window.innerHeight)));
   };
-  const onTouchEnd = () => {
+
+  const endTouch = (e: React.TouchEvent) => {
+    // Suppress the synthetic click that follows touchend: the handle unmounts as the drawer opens, so
+    // that click would land on the drawer's backdrop and close it again instantly.
+    if (e.cancelable) e.preventDefault();
     const d = drag.current;
+    cancelHold();
     drag.current = null;
     if (!d) return;
-    if (d.dragging) {
+    // Barely moved from where the finger first landed — a tap, even a slow/deliberate one that ran
+    // past HANDLE_HOLD_MS and triggered the vibration, still opens rather than silently doing nothing.
+    const barelyMoved = Math.hypot(d.lastX - d.origX, d.lastY - d.origY) <= HANDLE_HOLD_CANCEL_PX;
+    if (d.active && !barelyMoved) {
       try {
-        localStorage.setItem(HANDLE_Y_KEY, String(topFraction));
+        localStorage.setItem(HANDLE_Y_KEY, String(topFractionRef.current));
       } catch {
         // Best-effort; the handle just resets to center next launch.
       }
@@ -396,18 +552,36 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
   };
 
   return (
+    // The button's real hit area is deliberately wider/taller than the visible bar (matches the native
+    // gesture-exclusion rect above) — a tap landing near the edge but just outside the thin bar used to
+    // fall through to the grid underneath, which only reacts to a swipe, not a stationary tap. The bar
+    // itself (the inner span) stays HANDLE_WIDTH_PX/HANDLE_HEIGHT_PX and flush with the screen edge.
     <button
       aria-label="Profilleri göster"
       onClick={onOpen}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      onTouchEnd={endTouch}
+      onTouchCancel={endTouch}
       style={{
         position: "fixed", right: 0, top: `${topFraction * 100}%`, transform: "translateY(-50%)", zIndex: 90,
-        width: HANDLE_WIDTH_PX, height: HANDLE_HEIGHT_PX, borderRadius: "8px 0 0 8px", border: "none",
-        background: "rgba(255,255,255,.14)", cursor: "pointer", padding: 0, touchAction: "none",
+        width: EDGE_SWIPE_ZONE_PX, height: GESTURE_ZONE_HEIGHT_PX, border: "none", background: "transparent",
+        cursor: "pointer", padding: 0, touchAction: "none",
+        display: "flex", alignItems: "center", justifyContent: "flex-end",
       }}
-    />
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: HANDLE_WIDTH_PX, height: HANDLE_HEIGHT_PX, borderRadius: "8px 0 0 8px",
+          background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <svg width="7" height="13" viewBox="0 0 7 13" fill="none" aria-hidden="true">
+          <path d="M6 1L1 6.5L6 12" stroke="rgba(255,255,255,.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    </button>
   );
 }
 

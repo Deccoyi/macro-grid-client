@@ -14,9 +14,9 @@ Sunucu (arka uç + WebView2 editörü) ayrı bir repoda: **https://github.com/De
 
 ## Durum
 
-**Erken aşama / MVP.** Şu an çalışan: sunucu IP'sini elle girip bağlanma, sunucudaki profilin sayfasını çizme, buton/toggle basış-bırakış-uzun basış-çift dokunuş olaylarını sunucuya iletme, bağlantı koptuğunda otomatik yeniden bağlanma (exponential backoff).
+**Aşama 5 tamam (gerçek cihaz testi hariç).** Şu an çalışan: sunucu IP'sini elle girip veya QR kod tarayarak bağlanma, PIN ile eşleştirme, sunucudaki profilin sayfasını çizme, buton/toggle basış-bırakış-uzun basış-çift dokunuş olaylarını sunucuya iletme, profil seçim çekmecesi (drawer), sayfa geçişi (swipe), slider/knob'un gerçek çift yönlü değer akışı, kiosk modu + yön kilidi (drawer içindeki Ayarlar panelinden), ekranı uyanık tutma (keep-awake), bağlantı koptuğunda otomatik yeniden bağlanma (exponential backoff), offline/son-layout önbelleği.
 
-**Henüz yok:** mDNS/QR/PIN ile otomatik eşleştirme, profil seçim çekmecesi (drawer), kiosk modu, ekranı uyanık tutma (keep-awake) entegrasyonu, offline/son-layout önbelleği, slider/knob'un gerçek çift yönlü değer akışı.
+**Henüz yok:** mDNS ile otomatik keşif (IP hâlâ elle girilir ya da QR ile taranır), gerçek cihaz/emülatör testi (USB debug).
 
 Ayrıntılı yol haritası için sunucu repo'sundaki [docs/plan.md](docs/plan.md)'ye bakın (Aşama 5 bu repoyu kapsar).
 

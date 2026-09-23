@@ -198,4 +198,16 @@ export class ServerConnection {
   changeProfile(profileId: string): void {
     this.send("profile.change", { profileId });
   }
+
+  /** Requests the next/previous page on this device's current profile (e.g. a horizontal swipe on the
+   * deck). Goes through the same `SessionDeviceController.Next/PreviousPageAsync` as a `core.page`
+   * button action server-side — wraparound and the resulting `page.show` + widget state push are
+   * identical, the swipe is just another way to trigger it. */
+  nextPage(): void {
+    this.send("page.next");
+  }
+
+  prevPage(): void {
+    this.send("page.prev");
+  }
 }

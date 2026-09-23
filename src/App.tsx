@@ -69,6 +69,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
   /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
    * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
@@ -122,6 +124,11 @@ export function App() {
       },
       onProfiles: setProfiles,
       onPaired: (token) => localStorage.setItem(tokenKey(targetHost), token),
+      onActionError: (message) => {
+        if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
+        setActionError(message);
+        actionErrorTimer.current = setTimeout(() => setActionError(null), 4000);
+      },
     });
     connectionRef.current = connection;
     connection.connect();
@@ -200,6 +207,7 @@ export function App() {
       page={page}
       status={status}
       usingCache={usingCache}
+      actionError={actionError}
       states={states}
       dragValues={dragValues}
       onDragValuesChange={setDragValues}
@@ -230,6 +238,7 @@ function DeckScreen({
   page,
   status,
   usingCache,
+  actionError,
   states,
   dragValues,
   onDragValuesChange,
@@ -250,6 +259,7 @@ function DeckScreen({
   page: Profile["pages"][number];
   status: ConnectionStatus;
   usingCache: boolean;
+  actionError: string | null;
   states: Record<string, WidgetState>;
   dragValues: Record<string, number>;
   onDragValuesChange: (updater: (prev: Record<string, number>) => Record<string, number>) => void;
@@ -315,6 +325,7 @@ function DeckScreen({
       onTouchEnd={onTouchEnd}
     >
       {status !== "connected" && <StatusBadge status={status} usingCache={usingCache} />}
+      {actionError && <ActionErrorToast message={actionError} />}
 
       {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss.
           Shown even with a single profile now — it's also the only way to reach Ayarlar. */}
@@ -684,6 +695,30 @@ function ConnectScreen({
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+function ActionErrorToast({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        bottom: "max(24px, env(safe-area-inset-bottom, 0px))",
+        transform: "translateX(-50%)",
+        maxWidth: "min(420px, calc(100vw - 32px))",
+        padding: "10px 16px",
+        borderRadius: 10,
+        background: "rgba(127,29,29,.95)",
+        color: "#fecaca",
+        fontSize: 13,
+        lineHeight: 1.4,
+        boxShadow: "0 4px 16px rgba(0,0,0,.4)",
+        zIndex: 200,
+      }}
+    >
+      {message}
     </div>
   );
 }

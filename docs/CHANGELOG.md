@@ -6,6 +6,7 @@ Bu repo, Macro Station'ın **client** (telefon/tablet) tarafıdır ve server'dan
 
 ## [Unreleased]
 ### Added
+- **Başarısız bir widget aksiyonu artık kırmızı bir toast olarak gösteriliyor** (ör. silinmiş bir OBS sahnesine bağlı buton): sunucudan gelen `error`/`action_failed` zarfı `onActionError` ile `App.tsx`'e ulaşıyor, 4sn görünen bir toast çiziyor. Sunucu tarafı `macro-station` reposunda; aynı desen `webclient/`'te de var. Gerçek Samsung telefonda (USB `adb install`) uçtan uca doğrulandı.
 - **Sayfa geçişi client'tan tetikleniyor:** yatay swipe ile `page.next`/`page.prev` gönderiliyor (server'da zaten var olan sayfa geçişini artık client de tetikleyebiliyor).
 - **Kiosk modu ve yön kilidi:** native `KioskPlugin.java` ile immersive/tam ekran mod, `@capacitor/screen-orientation` ile yön kilidi. Profil çekmecesi içine bir Ayarlar paneli (`SettingsPanel.tsx`) eklendi, ayarlar `localStorage`'da kalıcı.
 - **Slider/knob gerçek çift yönlü değer akışı:** sürükleme sırasında yerel `dragValues` ile anlık geri bildirim veriliyor (özellikle Knob için, prop-driven olduğundan kendi sürükleme durumu yok), bırakınca `widget.value` sunucuya gönderiliyor; sunucudan gelen gerçek `widget.state` değeri geldiğinde o widget'ın `dragValues` girdisi temizlenip sunucunun değeri kazanıyor.

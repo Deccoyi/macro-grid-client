@@ -53,6 +53,9 @@ export interface ConnectionEvents {
   /** A brand-new token was issued (first pairing, or a re-pair) — the caller must persist it: it
    * replaces the PIN on every future connection attempt. */
   onPaired: (token: string) => void;
+  /** A widget's action failed server-side (e.g. a button pointed at a since-deleted OBS scene) —
+   * surfaced as a toast so a stale binding is never a silent no-op on the device that pressed it. */
+  onActionError: (message: string) => void;
 }
 
 const CLIENT_VERSION = "0.1.0";
@@ -187,6 +190,7 @@ export class ServerConnection {
       case "error": {
         const data = envelope.data as ErrorData;
         if (data.code === "pairing_required") this.events.onStatusChange("pairing_required");
+        else if (data.code === "action_failed") this.events.onActionError(data.message);
         break;
       }
       default:

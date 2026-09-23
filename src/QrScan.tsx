@@ -84,6 +84,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
         });
 
         document.body.classList.add("barcode-scanner-active");
+        document.documentElement.classList.add("barcode-scanner-active");
         scanStartedRef.current = true;
         await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] });
       } catch {
@@ -96,6 +97,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
     return () => {
       cancelled = true;
       document.body.classList.remove("barcode-scanner-active");
+      document.documentElement.classList.remove("barcode-scanner-active");
       listenerHandle?.remove();
       if (scanStartedRef.current) {
         scanStartedRef.current = false;
@@ -109,6 +111,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
   useEffect(() => {
     if (!pending) return;
     document.body.classList.remove("barcode-scanner-active");
+    document.documentElement.classList.remove("barcode-scanner-active");
     if (scanStartedRef.current) {
       scanStartedRef.current = false;
       BarcodeScanner.stopScan().catch(() => {});

@@ -28,6 +28,15 @@ body.barcode-scanner-active {
   visibility: hidden;
 }
 
+/* visibility:hidden only hides content — html/body/#root still paint their own opaque background over
+   the native camera layer, which is why the preview stayed black. All three must go transparent while
+   scanning (the class is set on <html> too, see QrScan.tsx). */
+html.barcode-scanner-active,
+html.barcode-scanner-active body,
+html.barcode-scanner-active #root {
+  background: transparent;
+}
+
 .barcode-scanner-modal {
   visibility: visible;
 }

@@ -8,6 +8,7 @@ import { SettingsButton, SettingsPanel } from "./SettingsPanel";
 import { forgetServer, loadServers, rememberServer } from "./servers";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./settings";
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
+import { resolveAssetRefs } from "./ws/assets";
 
 const HOST_KEY = "macro-station.host";
 const EDGE_SWIPE_ZONE_PX = 56;
@@ -38,6 +39,8 @@ const tokenKey = (host: string) => `macro-station.token.${host}`;
  * deck immediately instead of the connect screen while the first real layout.full is still in flight. */
 const layoutCacheKey = (host: string) => `macro-station.layoutCache.${host}`;
 
+/** `profile` still carries compact `asset:` references (icons live once each in the asset cache), so the
+ * cache stays small however many widgets share an icon. It is resolved for display with resolveAssetRefs. */
 interface LayoutCache {
   profile: Profile;
   pageId: string;
@@ -53,6 +56,18 @@ function loadLayoutCache(host: string): LayoutCache | null {
   }
 }
 
+function resolveCachedProfile(cache: LayoutCache | null): Profile | null {
+  return cache ? resolveAssetRefs(cache.profile) : null;
+}
+
+function saveLayoutCache(host: string, profile: Profile, pageId: string): void {
+  try {
+    localStorage.setItem(layoutCacheKey(host), JSON.stringify({ profile, pageId } satisfies LayoutCache));
+  } catch {
+    // Storage full or unavailable (private mode) — the cache is a nice-to-have, not essential.
+  }
+}
+
 export function App() {
   const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
   /** The server the socket is actually pointed at — `host` is just the connect screen's text field. */
@@ -62,7 +77,7 @@ export function App() {
   const [addingServer, setAddingServer] = useState(false);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [usingCache, setUsingCache] = useState(() => loadLayoutCache(host) !== null);
-  const [profile, setProfile] = useState<Profile | null>(() => loadLayoutCache(host)?.profile ?? null);
+  const [profile, setProfile] = useState<Profile | null>(() => resolveCachedProfile(loadLayoutCache(host)));
   const [pageId, setPageId] = useState<string | null>(() => loadLayoutCache(host)?.pageId ?? null);
   const [states, setStates] = useState<Record<string, WidgetState>>({});
   /** Local optimistic slider/knob position while dragging (and right after a commit, until the server's
@@ -79,6 +94,8 @@ export function App() {
   const [actionError, setActionError] = useState<string | null>(null);
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
+  /** The current layout in its compact `asset:` form — what gets written to the layout cache. */
+  const cacheProfileRef = useRef<Profile | null>(null);
   /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
    * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
   const pendingQrPinRef = useRef<string | null>(null);
@@ -93,13 +110,15 @@ export function App() {
     setProfiles([]);
     setAutoSwitch(null);
     const cached = loadLayoutCache(targetHost);
-    setProfile(cached?.profile ?? null);
+    cacheProfileRef.current = cached?.profile ?? null;
+    setProfile(resolveCachedProfile(cached));
     setPageId(cached?.pageId ?? null);
     setUsingCache(cached !== null);
 
     const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", localStorage.getItem(tokenKey(targetHost)), {
       onStatusChange: setStatus,
-      onLayout: (nextProfile, nextPageId) => {
+      onLayout: (nextProfile, nextPageId, cacheProfile) => {
+        cacheProfileRef.current = cacheProfile;
         setProfile(nextProfile);
         setPageId(nextPageId);
         setStates({});
@@ -107,22 +126,32 @@ export function App() {
         // First layout means hello was accepted — only now is this a real, working server worth remembering.
         setServers(rememberServer(targetHost));
         try {
-          localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: nextProfile, pageId: nextPageId } satisfies LayoutCache));
+          localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: cacheProfile, pageId: nextPageId } satisfies LayoutCache));
         } catch {
           // Storage full or unavailable (private mode) — the cache is a nice-to-have, not essential.
         }
       },
+      onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
+        cacheProfileRef.current = cacheProfile;
+        setProfile(nextProfile);
+        setPageId(nextPageId);
+        // Only the changed widgets lose their live state (the server re-sends it); every other widget keeps
+        // its text, toggle and slider position, so an edit elsewhere on the deck is invisible here.
+        setStates((prev) => {
+          const next = { ...prev };
+          for (const id of changedWidgetIds) delete next[id];
+          return next;
+        });
+        setDragValues((prev) => {
+          const next = { ...prev };
+          for (const id of changedWidgetIds) delete next[id];
+          return next;
+        });
+        saveLayoutCache(targetHost, cacheProfile, nextPageId);
+      },
       onPageChange: (nextPageId) => {
         setPageId(nextPageId);
-        setProfile((prev) => {
-          if (!prev) return prev;
-          try {
-            localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: prev, pageId: nextPageId } satisfies LayoutCache));
-          } catch {
-            // Cache is a nice-to-have; ignore storage errors.
-          }
-          return prev;
-        });
+        if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
       },
       onWidgetState: (state) => {
         setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));

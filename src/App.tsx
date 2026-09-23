@@ -6,7 +6,7 @@ import { clearGestureExclusionZone, setGestureExclusionZone } from "./gestureExc
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
 import { SettingsButton, SettingsPanel } from "./SettingsPanel";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./settings";
-import { ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
+import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 
 const HOST_KEY = "macro-station.host";
 const EDGE_SWIPE_ZONE_PX = 56;
@@ -65,6 +65,7 @@ export function App() {
    * (another device, Windows itself) doesn't get stuck showing a stale local drag forever. */
   const [dragValues, setDragValues] = useState<Record<string, number>>({});
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [autoSwitch, setAutoSwitch] = useState<AutoSwitchInfo | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
@@ -81,6 +82,7 @@ export function App() {
     localStorage.setItem(HOST_KEY, targetHost);
     setStates({});
     setProfiles([]);
+    setAutoSwitch(null);
     const cached = loadLayoutCache(targetHost);
     setProfile(cached?.profile ?? null);
     setPageId(cached?.pageId ?? null);
@@ -122,7 +124,7 @@ export function App() {
           });
         }
       },
-      onProfiles: setProfiles,
+      onProfiles: (nextProfiles, nextAutoSwitch) => { setProfiles(nextProfiles); setAutoSwitch(nextAutoSwitch); },
       onPaired: (token) => localStorage.setItem(tokenKey(targetHost), token),
       onActionError: (message) => {
         if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
@@ -213,6 +215,8 @@ export function App() {
       onDragValuesChange={setDragValues}
       profiles={profiles}
       currentProfileId={profile.id}
+      autoSwitch={autoSwitch}
+      onToggleAutoSwitchLock={() => connectionRef.current?.setProfileLock(!autoSwitch?.locked)}
       drawerOpen={drawerOpen}
       onDrawerOpenChange={setDrawerOpen}
       onPickProfile={(id) => {
@@ -244,6 +248,8 @@ function DeckScreen({
   onDragValuesChange,
   profiles,
   currentProfileId,
+  autoSwitch,
+  onToggleAutoSwitchLock,
   drawerOpen,
   onDrawerOpenChange,
   onPickProfile,
@@ -265,6 +271,8 @@ function DeckScreen({
   onDragValuesChange: (updater: (prev: Record<string, number>) => Record<string, number>) => void;
   profiles: ProfileSummary[];
   currentProfileId: string;
+  autoSwitch: AutoSwitchInfo | null;
+  onToggleAutoSwitchLock: () => void;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
   onPickProfile: (id: string) => void;
@@ -361,6 +369,8 @@ function DeckScreen({
         open={drawerOpen}
         profiles={profiles}
         currentProfileId={currentProfileId}
+        autoSwitch={autoSwitch}
+        onToggleAutoSwitchLock={onToggleAutoSwitchLock}
         onClose={() => onDrawerOpenChange(false)}
         onPick={onPickProfile}
         onOpenSettings={() => {
@@ -383,6 +393,8 @@ function ProfileDrawer({
   open,
   profiles,
   currentProfileId,
+  autoSwitch,
+  onToggleAutoSwitchLock,
   onClose,
   onPick,
   onOpenSettings,
@@ -390,6 +402,8 @@ function ProfileDrawer({
   open: boolean;
   profiles: ProfileSummary[];
   currentProfileId: string;
+  autoSwitch: AutoSwitchInfo | null;
+  onToggleAutoSwitchLock: () => void;
   onClose: () => void;
   onPick: (id: string) => void;
   onOpenSettings: () => void;
@@ -413,7 +427,23 @@ function ProfileDrawer({
           display: "flex", flexDirection: "column", gap: 4,
         }}
       >
-        <div style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", padding: "4px 10px 12px" }}>Profiller</div>
+        <div style={{ display: "flex", alignItems: "center", padding: "4px 10px 12px" }}>
+          <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>Profiller</span>
+          <div style={{ flex: 1 }} />
+          {autoSwitch?.enabled && (
+            <button
+              onClick={onToggleAutoSwitchLock}
+              title={autoSwitch.locked ? "Otomatik geçiş kilitli — açmak için dokun" : "Otomatik geçiş açık — kilitlemek için dokun"}
+              style={{
+                display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, border: "none",
+                background: autoSwitch.locked ? "rgba(239,68,68,.18)" : "rgba(74,222,128,.15)",
+                color: autoSwitch.locked ? "#f87171" : "#4ade80", fontSize: 10.5, cursor: "pointer",
+              }}
+            >
+              {autoSwitch.locked ? "Kilitli" : "Otomatik"}
+            </button>
+          )}
+        </div>
         {profiles.map((p) => (
           <button
             key={p.id}

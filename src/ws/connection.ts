@@ -35,8 +35,16 @@ export interface ProfileSummary {
   name: string;
 }
 
+/** This device's auto-profile-switch opt-in and current lock state — see docs/auto-profile-switch.md in
+ * the server repo. `enabled: false` means the device never auto-switches; the drawer hides the lock. */
+export interface AutoSwitchInfo {
+  enabled: boolean;
+  locked: boolean;
+}
+
 interface ProfilesListData {
   profiles: ProfileSummary[];
+  autoSwitch?: AutoSwitchInfo | null;
 }
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "pairing_required";
@@ -49,7 +57,7 @@ export interface ConnectionEvents {
    * showing this profile just gets told which page to show now. */
   onPageChange: (pageId: string) => void;
   onWidgetState: (state: WidgetState) => void;
-  onProfiles: (profiles: ProfileSummary[]) => void;
+  onProfiles: (profiles: ProfileSummary[], autoSwitch: AutoSwitchInfo | null) => void;
   /** A brand-new token was issued (first pairing, or a re-pair) — the caller must persist it: it
    * replaces the PIN on every future connection attempt. */
   onPaired: (token: string) => void;
@@ -184,9 +192,11 @@ export class ServerConnection {
       case "widget.state":
         this.events.onWidgetState(envelope.data as WidgetState);
         break;
-      case "profiles.list":
-        this.events.onProfiles((envelope.data as ProfilesListData).profiles);
+      case "profiles.list": {
+        const data = envelope.data as ProfilesListData;
+        this.events.onProfiles(data.profiles, data.autoSwitch ?? null);
         break;
+      }
       case "error": {
         const data = envelope.data as ErrorData;
         if (data.code === "pairing_required") this.events.onStatusChange("pairing_required");
@@ -201,6 +211,12 @@ export class ServerConnection {
   /** Requests the server switch this device to a different profile (e.g. from the profile drawer). */
   changeProfile(profileId: string): void {
     this.send("profile.change", { profileId });
+  }
+
+  /** Pauses/resumes this device's auto-profile-switch (the drawer's lock) — a no-op server-side if this
+   * device doesn't have "Aktif pencereyi takip et" on. */
+  setProfileLock(locked: boolean): void {
+    this.send("profile.lock", { locked });
   }
 
   /** Requests the next/previous page on this device's current profile (e.g. a horizontal swipe on the

@@ -6,6 +6,7 @@ Bu repo, Macro Station'ın **client** (telefon/tablet) tarafıdır ve server'dan
 
 ## [Unreleased]
 ### Added
+- **Otomatik profil geçişi drawer kilidi:** sunucu tarafı `macro-station` reposunda tanımlanan aktif-pencere-tabanlı otomatik profil geçişine (bkz. o reponun `docs/auto-profile-switch.md`'si) eşlik eden client UI. `profiles.list` mesajındaki yeni `autoSwitch: {enabled, locked}` alanı okunuyor; cihaz opt-in ise (`FollowActiveWindow`) profil drawer'ının başlığında bir kilit rozeti çıkıyor, tıklanınca `profile.lock` mesajıyla otomatik geçiş duraklatılıp/devam ettiriliyor (elle profil seçimi kilitliyken de çalışmaya devam ediyor). Gerçek OS ön-plan-penceresi olayıyla uçtan uca henüz doğrulanmadı.
 - **Başarısız bir widget aksiyonu artık kırmızı bir toast olarak gösteriliyor** (ör. silinmiş bir OBS sahnesine bağlı buton): sunucudan gelen `error`/`action_failed` zarfı `onActionError` ile `App.tsx`'e ulaşıyor, 4sn görünen bir toast çiziyor. Sunucu tarafı `macro-station` reposunda; aynı desen `webclient/`'te de var. Gerçek Samsung telefonda (USB `adb install`) uçtan uca doğrulandı.
 - **Sayfa geçişi client'tan tetikleniyor:** yatay swipe ile `page.next`/`page.prev` gönderiliyor (server'da zaten var olan sayfa geçişini artık client de tetikleyebiliyor).
 - **Kiosk modu ve yön kilidi:** native `KioskPlugin.java` ile immersive/tam ekran mod, `@capacitor/screen-orientation` ile yön kilidi. Profil çekmecesi içine bir Ayarlar paneli (`SettingsPanel.tsx`) eklendi, ayarlar `localStorage`'da kalıcı.

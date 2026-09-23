@@ -5,6 +5,7 @@ import { getDeviceId } from "./deviceId";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "./gestureExclusion";
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
 import { SettingsButton, SettingsPanel } from "./SettingsPanel";
+import { forgetServer, loadServers, rememberServer } from "./servers";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./settings";
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 
@@ -54,6 +55,11 @@ function loadLayoutCache(host: string): LayoutCache | null {
 
 export function App() {
   const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
+  /** The server the socket is actually pointed at — `host` is just the connect screen's text field. */
+  const [activeHost, setActiveHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
+  const [servers, setServers] = useState<string[]>(loadServers);
+  /** Forces the connect screen over a live/cached deck so a second server can be added. */
+  const [addingServer, setAddingServer] = useState(false);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [usingCache, setUsingCache] = useState(() => loadLayoutCache(host) !== null);
   const [profile, setProfile] = useState<Profile | null>(() => loadLayoutCache(host)?.profile ?? null);
@@ -80,6 +86,9 @@ export function App() {
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
     localStorage.setItem(HOST_KEY, targetHost);
+    setActiveHost(targetHost);
+    setHost(targetHost);
+    setAddingServer(false);
     setStates({});
     setProfiles([]);
     setAutoSwitch(null);
@@ -95,6 +104,8 @@ export function App() {
         setPageId(nextPageId);
         setStates({});
         setUsingCache(false);
+        // First layout means hello was accepted — only now is this a real, working server worth remembering.
+        setServers(rememberServer(targetHost));
         try {
           localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: nextProfile, pageId: nextPageId } satisfies LayoutCache));
         } catch {
@@ -191,7 +202,7 @@ export function App() {
 
   // Pairing always wins over a cached layout — a stale grid with no indication a PIN is needed would
   // just look broken ("Çevrimdışı" forever) instead of telling the user what to do about it.
-  if (!profile || !page || status === "pairing_required") {
+  if (!profile || !page || status === "pairing_required" || addingServer) {
     return (
       <ConnectScreen
         host={host}
@@ -200,6 +211,16 @@ export function App() {
         onConnect={() => host.trim() && connect(host.trim())}
         onSubmitPin={(pin) => connectionRef.current?.retryWithPin(pin)}
         onScanQr={() => setScanning(true)}
+        servers={servers}
+        onPickServer={connect}
+        onCancel={
+          addingServer
+            ? () => {
+                setHost(activeHost);
+                setAddingServer(false);
+              }
+            : undefined
+        }
       />
     );
   }
@@ -215,6 +236,18 @@ export function App() {
       onDragValuesChange={setDragValues}
       profiles={profiles}
       currentProfileId={profile.id}
+      servers={servers}
+      activeHost={activeHost}
+      onPickServer={(h) => {
+        setDrawerOpen(false);
+        if (h !== activeHost) connect(h);
+      }}
+      onForgetServer={(h) => setServers(forgetServer(h))}
+      onAddServer={() => {
+        setDrawerOpen(false);
+        setHost("");
+        setAddingServer(true);
+      }}
       autoSwitch={autoSwitch}
       onToggleAutoSwitchLock={() => connectionRef.current?.setProfileLock(!autoSwitch?.locked)}
       drawerOpen={drawerOpen}
@@ -248,6 +281,11 @@ function DeckScreen({
   onDragValuesChange,
   profiles,
   currentProfileId,
+  servers,
+  activeHost,
+  onPickServer,
+  onForgetServer,
+  onAddServer,
   autoSwitch,
   onToggleAutoSwitchLock,
   drawerOpen,
@@ -271,6 +309,11 @@ function DeckScreen({
   onDragValuesChange: (updater: (prev: Record<string, number>) => Record<string, number>) => void;
   profiles: ProfileSummary[];
   currentProfileId: string;
+  servers: string[];
+  activeHost: string;
+  onPickServer: (host: string) => void;
+  onForgetServer: (host: string) => void;
+  onAddServer: () => void;
   autoSwitch: AutoSwitchInfo | null;
   onToggleAutoSwitchLock: () => void;
   drawerOpen: boolean;
@@ -369,6 +412,11 @@ function DeckScreen({
         open={drawerOpen}
         profiles={profiles}
         currentProfileId={currentProfileId}
+        servers={servers}
+        activeHost={activeHost}
+        onPickServer={onPickServer}
+        onForgetServer={onForgetServer}
+        onAddServer={onAddServer}
         autoSwitch={autoSwitch}
         onToggleAutoSwitchLock={onToggleAutoSwitchLock}
         onClose={() => onDrawerOpenChange(false)}
@@ -393,6 +441,11 @@ function ProfileDrawer({
   open,
   profiles,
   currentProfileId,
+  servers,
+  activeHost,
+  onPickServer,
+  onForgetServer,
+  onAddServer,
   autoSwitch,
   onToggleAutoSwitchLock,
   onClose,
@@ -402,6 +455,11 @@ function ProfileDrawer({
   open: boolean;
   profiles: ProfileSummary[];
   currentProfileId: string;
+  servers: string[];
+  activeHost: string;
+  onPickServer: (host: string) => void;
+  onForgetServer: (host: string) => void;
+  onAddServer: () => void;
   autoSwitch: AutoSwitchInfo | null;
   onToggleAutoSwitchLock: () => void;
   onClose: () => void;
@@ -432,15 +490,28 @@ function ProfileDrawer({
           <div style={{ flex: 1 }} />
           {autoSwitch?.enabled && (
             <button
+              role="switch"
+              aria-checked={autoSwitch.locked}
+              aria-label="Profil kilidi"
               onClick={onToggleAutoSwitchLock}
               title={autoSwitch.locked ? "Otomatik geçiş kilitli — açmak için dokun" : "Otomatik geçiş açık — kilitlemek için dokun"}
               style={{
-                display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, border: "none",
-                background: autoSwitch.locked ? "rgba(239,68,68,.18)" : "rgba(74,222,128,.15)",
-                color: autoSwitch.locked ? "#f87171" : "#4ade80", fontSize: 10.5, cursor: "pointer",
+                position: "relative", width: 48, height: 26, padding: 0, borderRadius: 999, border: "none", cursor: "pointer",
+                background: autoSwitch.locked ? "#ef4444" : "#3a3f45", transition: "background .15s ease",
               }}
             >
-              {autoSwitch.locked ? "Kilitli" : "Otomatik"}
+              <span
+                style={{
+                  position: "absolute", top: 3, left: autoSwitch.locked ? 25 : 3, width: 20, height: 20, borderRadius: "50%",
+                  background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: autoSwitch.locked ? "#ef4444" : "#6b7280", transition: "left .15s ease, color .15s ease",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="none" />
+                  <path d={autoSwitch.locked ? "M8 11V7a4 4 0 0 1 8 0v4" : "M8 11V7a4 4 0 0 1 7.5-2"} />
+                </svg>
+              </span>
             </button>
           )}
         </div>
@@ -458,6 +529,40 @@ function ProfileDrawer({
             {p.name}
           </button>
         ))}
+        <div style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", padding: "16px 10px 6px" }}>Sunucular</div>
+        {servers.map((h) => (
+          <div key={h} style={{ display: "flex", alignItems: "center" }}>
+            <button
+              onClick={() => onPickServer(h)}
+              style={{
+                flex: 1, minWidth: 0, textAlign: "left", padding: "10px", borderRadius: 8, border: "none", cursor: "pointer",
+                fontSize: 13, fontFamily: "ui-monospace, monospace", overflow: "hidden", textOverflow: "ellipsis",
+                background: h === activeHost ? "rgba(59,130,246,.18)" : "transparent",
+                color: h === activeHost ? "#60a5fa" : "#e6e7ea",
+              }}
+            >
+              {h}
+            </button>
+            {h !== activeHost && (
+              <button
+                onClick={() => window.confirm(`${h} sunucusu listeden silinsin mi? (Eşleşme bilgisi de silinir)`) && onForgetServer(h)}
+                aria-label={`${h} sunucusunu sil`}
+                style={{ border: "none", background: "transparent", color: "#9aa0a8", fontSize: 18, padding: "6px 10px", cursor: "pointer" }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={onAddServer}
+          style={{
+            display: "block", width: "100%", textAlign: "left", padding: "10px", borderRadius: 8, border: "none",
+            cursor: "pointer", fontSize: 14, background: "transparent", color: "#60a5fa",
+          }}
+        >
+          + Sunucu ekle
+        </button>
         <SettingsButton onOpen={onOpenSettings} />
       </div>
     </>
@@ -633,6 +738,9 @@ function ConnectScreen({
   onConnect,
   onSubmitPin,
   onScanQr,
+  servers,
+  onPickServer,
+  onCancel,
 }: {
   host: string;
   status: ConnectionStatus;
@@ -640,6 +748,9 @@ function ConnectScreen({
   onConnect: () => void;
   onSubmitPin: (pin: string) => void;
   onScanQr: () => void;
+  servers: string[];
+  onPickServer: (host: string) => void;
+  onCancel?: () => void;
 }) {
   const [pin, setPin] = useState("");
   const pairing = status === "pairing_required";
@@ -688,6 +799,28 @@ function ConnectScreen({
           >
             QR ile Tara
           </button>
+          {servers.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: 320, marginTop: 6 }}>
+              <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>Kayıtlı sunucular</span>
+              {servers.map((h) => (
+                <button
+                  key={h}
+                  onClick={() => onPickServer(h)}
+                  style={{
+                    padding: "10px 12px", fontSize: 14, borderRadius: 8, border: "1px solid #2d3136", background: "#16181c",
+                    color: "#e6e7ea", cursor: "pointer", textAlign: "left", fontFamily: "ui-monospace, monospace",
+                  }}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          )}
+          {onCancel && (
+            <button onClick={onCancel} style={{ border: "none", background: "transparent", color: "#9aa0a8", fontSize: 14, cursor: "pointer", padding: 8 }}>
+              Vazgeç
+            </button>
+          )}
           {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>Bağlanıyor…</span>}
           {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>Bağlantı koptu, yeniden deneniyor…</span>}
         </>

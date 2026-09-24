@@ -2,20 +2,28 @@
 
 ## What to expect from this software
 
-This app is designed for a home or office network you trust and is not hardened for the internet. Its traffic to the server is not encrypted (plain `ws://`). The security model of the
-whole system is described in the server repository's `docs/architecture.md`, and this app's part of it in [docs/architecture.md](docs/architecture.md#security). The software was written by an AI assistant
-and has not been independently audited (see the [README](README.md)).
+Macro Grid is designed for a home or office network you trust. It is **not hardened for the internet** and must not be exposed to it.
+
+- **Plain, unencrypted traffic.** The app talks to the server over plain `ws://`. Anyone who can see the traffic on your network can read it, including the pairing PIN and the token
+  that is stored after pairing. Android is told to allow cleartext traffic for this reason.
+- **LAN-only model.** The security model assumes that everyone on the network is at least somewhat trusted. Pairing (a six-digit PIN, then a token) keeps out casual connections; it is not
+  a defense against an attacker on the same network. The whole system is described in the server repository's `docs/architecture.md`, and this app's part in
+  [docs/architecture.md](docs/architecture.md#security).
+- **No warranty.** The software is provided "as is" under the [MIT license](LICENSE), without warranty of any kind. It was written by an AI assistant and has not been independently
+  audited (see the [README](README.md)).
 
 ## Reporting a vulnerability
 
-Please report security problems privately, not in a public issue: use GitHub's private vulnerability reporting (the **Security** tab of the repository,
-then **Report a vulnerability**). If that is not available, open an issue that says only that you have a security report and ask for a private channel,
-without any details of the problem.
+Please report security problems privately, not in a public issue. Use GitHub's private vulnerability reporting: open the **Security** tab of this repository, then
+**Report a vulnerability**.
 
-Helpful details: what is affected, the steps to reproduce, and what an attacker on the same network could do.
+For anything else about the project, write to macrogrid.app@gmail.com. Please do not send vulnerability details there; use the private reporting above.
+
+Helpful details: what is affected, the steps to reproduce, and what an attacker on the same network could do. A problem in the server or a plugin belongs in
+the [server](https://github.com/Deccoyi/macro-grid) or [plugin](https://github.com/Deccoyi/macro-grid-plugin) repository.
 
 This is a small project maintained in spare time, so there is no guaranteed response time, but reports are taken seriously.
 
 ## Supported versions
 
-Only the latest release (or, before the first release, the `dev` branch) receives fixes.
+Only the latest release (or, before the first release, the `dev` branch) receives fixes. The project is in alpha.

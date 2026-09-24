@@ -11,6 +11,7 @@
     "dev": "vite --port 5191",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "npm test -w @macro/renderer",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android"
   },

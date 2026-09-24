@@ -65,7 +65,7 @@ npm test --workspace packages/renderer       # the renderer tests (Vitest)
 - **`setPointerCapture` can throw** for a stale pointer id and silently kill a handler; it is wrapped in try/catch in `usePressGesture`. Do the same for similar calls.
 - **React StrictMode runs effects twice in development.** A late event from a connection that was already closed must not touch the new connection's state; `ServerConnection` has a `destroyed`
   flag for this. Keep it in mind for anything long-lived created in an effect.
-- **`sdk.dir` in `android/local.properties`** must use forward slashes (`C:/Users/you/AppData/Local/Android/Sdk`). A backslash is an escape character in that file format and silently corrupts the path.
+- **`sdk.dir` in `android/local.properties`** must use forward slashes (for example `C:/path/to/Android/Sdk`). A backslash is an escape character in that file format and silently corrupts the path.
 - **`cap sync` rewrites `android/capacitor.settings.gradle` and `android/app/capacitor.build.gradle`.** Their line endings can change on Windows without any real change; do not commit that noise.
 - **The renderer is an independent copy** of the one in the server repository. A rendering change that both need is made in both.
 - **UI text** is currently hard-coded in Turkish in the components (there is no i18n layer in the app yet).

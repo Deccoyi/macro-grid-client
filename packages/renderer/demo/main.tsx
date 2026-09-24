@@ -8,12 +8,12 @@ const page: Page = {
   cols: 4,
   rows: 3,
   widgets: [
-    { id: "btn", actions: {}, type: "button", x: 0, y: 0, w: 1, h: 1, text: "Kopyala", style: { background: "#1d4ed8", foreground: "#fff" } },
-    { id: "gradient", actions: {}, type: "button", x: 1, y: 0, w: 1, h: 1, text: "Özel CSS", style: { foreground: "#fff", radius: 12 },
+    { id: "btn", actions: {}, type: "button", x: 0, y: 0, w: 1, h: 1, text: "Copy", style: { background: "#1d4ed8", foreground: "#fff" } },
+    { id: "gradient", actions: {}, type: "button", x: 1, y: 0, w: 1, h: 1, text: "Custom CSS", style: { foreground: "#fff", radius: 12 },
       customCss: ":host { background: linear-gradient(135deg, #f59e0b, #dc2626); border: 2px solid gold; width: 999px; }" },
-    { id: "toggle", actions: {}, type: "toggle", x: 2, y: 0, w: 1, h: 1, text: "Sessiz", style: { background: "#374151", foreground: "#fff" } },
+    { id: "toggle", actions: {}, type: "toggle", x: 2, y: 0, w: 1, h: 1, text: "Mute", style: { background: "#374151", foreground: "#fff" } },
     { id: "label", actions: {}, type: "label", x: 3, y: 0, w: 1, h: 1, text: "CPU\n42%", style: { background: "#1f2937", foreground: "#38bdf8" } },
-    { id: "slider", actions: {}, type: "slider", x: 0, y: 1, w: 2, h: 1, text: "Ses", props: { min: 0, max: 100 }, style: { background: "#232529", foreground: "#e6e7ea" } },
+    { id: "slider", actions: {}, type: "slider", x: 0, y: 1, w: 2, h: 1, text: "Volume", props: { min: 0, max: 100 }, style: { background: "#232529", foreground: "#e6e7ea" } },
     { id: "knob", actions: {}, type: "knob", x: 2, y: 1, w: 1, h: 2, text: "Gain", props: { min: 0, max: 100 }, style: { background: "#232529", foreground: "#e6e7ea" } },
     { id: "image", actions: {}, type: "image", x: 3, y: 1, w: 1, h: 1, text: "Logo", props: { src: "" }, style: { background: "#111827", foreground: "#9a9ea6" } },
     { id: "web", actions: {}, type: "web", x: 0, y: 2, w: 2, h: 1, text: "Web Chat", style: { background: "#232529", foreground: "#9a9ea6" } },
@@ -27,7 +27,7 @@ function Demo() {
 
   return (
     <div style={{ padding: 16, height: "calc(100vh - 32px)" }}>
-      <h3 style={{ marginTop: 0 }}>Renderer demo — Aşama 3</h3>
+      <h3 style={{ marginTop: 0 }}>Renderer demo</h3>
       <div style={{ height: "80%", border: "1px solid #35383e", borderRadius: 4 }}>
         <Grid
           page={page}
@@ -45,9 +45,9 @@ function Demo() {
         />
       </div>
       <p style={{ fontSize: 12, color: "#9a9ea6" }}>
-        Toggle'a tıkla, slider/knob'u sürükle. "Özel CSS" butonunda width:999px sanitize edilmeli, gradient/border kalmalı.
+        Click the toggle, drag the slider and knob. The "Custom CSS" button must have width:999px removed by the sanitizer while the gradient and border stay.
       </p>
-      <button onClick={() => setActive((a) => ({ ...a, toggle: !a.toggle }))}>Toggle'ı çevir</button>
+      <button onClick={() => setActive((a) => ({ ...a, toggle: !a.toggle }))}>Flip the toggle</button>
       <pre style={{ fontSize: 11 }}>{JSON.stringify({ presses, values }, null, 2)}</pre>
     </div>
   );

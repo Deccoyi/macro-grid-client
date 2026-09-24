@@ -1,5 +1,9 @@
 # Macro Grid client
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)
+[![CI](https://github.com/Deccoyi/macro-grid-client/actions/workflows/ci.yml/badge.svg)](https://github.com/Deccoyi/macro-grid-client/actions/workflows/ci.yml)
+
 The phone and tablet app for [Macro Grid](https://github.com/Deccoyi/macro-grid). It connects over your local network to the Macro Grid server running
 on your Windows PC and shows the grid you designed in the server's editor as a full-screen touch deck: buttons, toggles, sliders and knobs that press keys and run
 actions on the PC, with live values coming back. It is an Android app built with Capacitor, React and TypeScript.
@@ -14,6 +18,11 @@ actions on the PC, with live values coming back. It is an Android app built with
 
 The server and editor are in [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin).
 The three are versioned independently. This app needs a Macro Grid server on the same network; without one it only shows its connect screen.
+
+> **Alpha software.** Expect rough edges and changes between versions.
+
+<!-- Screenshots: add images to docs/images/ and link them here. -->
+*Screenshots: coming soon (connect screen, deck, profile drawer).*
 
 ## What it does
 
@@ -34,7 +43,13 @@ The app's screens are currently in Turkish only.
 - An Android phone or tablet (Android 7.0, API 24, or newer) on the same network as the server.
 - A running Macro Grid server.
 
-There are no published releases yet: build the APK yourself (below). See [docs/release.md](docs/release.md).
+## Install
+
+1. Install and start the **Macro Grid server** on your Windows PC first ([macro-grid](https://github.com/Deccoyi/macro-grid), see its Releases). The app does nothing without it.
+2. Download the APK from this repository's [Releases](https://github.com/Deccoyi/macro-grid-client/releases) page and open it on the phone (allow installing from your browser or file manager when Android asks).
+3. Open the app, then scan the QR code in the editor's Pairing window or enter the server address and PIN.
+
+Plugins for the server are in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin). No release may exist yet while the project is being prepared; you can build the APK yourself (below). See [docs/release.md](docs/release.md).
 
 ## Build from source
 
@@ -86,4 +101,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The app uses open-source libraries and a few proprietary Google services. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every component with its version, license and
 copyright holder, and the original license texts are in [licenses/](licenses/). Both are also packaged into the app build (they are copied next to the web assets). The app
-icons are AI-generated.
+icons are AI-generated (image generator output, provided as is under the repository license).

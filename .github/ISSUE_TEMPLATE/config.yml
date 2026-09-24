@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Problem with the server or editor
+    url: https://github.com/Deccoyi/macro-grid/issues/new/choose
+    about: The Windows server, editor and installer are tracked in the macro-grid repository.
+  - name: Problem with a plugin or the plugin SDK
+    url: https://github.com/Deccoyi/macro-grid-plugin/issues/new/choose
+    about: Plugins and their authoring docs are tracked in the macro-grid-plugin repository.
+  - name: Report a security vulnerability
+    url: https://github.com/Deccoyi/macro-grid-client/security/advisories/new
+    about: Please report security problems privately, not in a public issue.

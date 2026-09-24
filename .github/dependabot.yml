@@ -1,0 +1,42 @@
+# Monthly, and all updates of one folder in a single pull request, to keep CI runs and mail down.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      all-updates:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    target-branch: dev
+  - package-ecosystem: npm
+    directory: "/packages/renderer"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      all-updates:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    target-branch: dev
+  - package-ecosystem: gradle
+    directory: "/android"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      all-updates:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    target-branch: dev
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      all-updates:
+        patterns: ["*"]
+    target-branch: dev

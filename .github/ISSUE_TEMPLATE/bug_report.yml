@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in the Android app does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is for the Android client. Server, editor or installer problems belong in the [macro-grid](https://github.com/Deccoyi/macro-grid/issues/new/choose) repository.
+        Do not report security problems here; use the private vulnerability reporting in the Security tab.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Client version
+      description: The app version or the release tag.
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server version
+      description: Shown in the server's About window.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Phone or tablet model, Android 14"
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or logs
+      description: Remove PINs, tokens and addresses you do not want to share.

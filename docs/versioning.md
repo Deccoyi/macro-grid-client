@@ -1,49 +1,28 @@
-# Sürümleme (Semantic Versioning)
+# Versioning
 
-Proje [SemVer](https://semver.org/) kullanır: `MAJOR.MINOR.PATCH`. Henüz 1.0.0 öncesindeyiz (`0.x.y`); SemVer'e göre 0.x'te her şey serbesttir ama bu projede **0.x'te de disiplinli davranıyoruz** — aşağıdaki MAJOR/MINOR/PATCH ayrımı 0.x için de geçerli, sadece ilk sayı 0'da sabit kalıyor (`0.MINOR.PATCH`).
+The phone app follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`. While it is before 1.0.0 (`0.MINOR.PATCH`) the same discipline applies: a breaking change or a
+compatible feature is a MINOR bump, a fix is a PATCH bump.
 
-## Nerede kaç versiyon var?
-Tek bir "proje versiyonu" yok — birbirinden bağımsız dört versiyon takip edilir, çünkü biri değişse bile diğerleri uyumlu kalabilir:
+## Where the version lives
 
-| Ne | Versiyon nerede yaşar | Şu an |
-|---|---|---|
-| **Server (Host)** | `MacroStation.Core.Sessions.ClientHub.ServerVersion` sabiti | `0.1.0` |
-| **Client** | `client/package.json` → `version` (client kurulunca) | — |
-| **Plugin SDK** (`MacroStation.Plugin.Abstractions`) | Kendi paket versiyonu (NuGet paketi olduğunda `.csproj` → `<Version>`) | `0.1.0` (henüz paketlenmedi, kod hâlâ proje referansıyla kullanılıyor) |
-| **Her plugin** | Kendi `plugin.json` → `version` | plugin'ler henüz yazılmadı (Aşama 6) |
+The single source is `version` in `package.json`. The Android `versionName` is that string and the Android `versionCode` is derived from it (`major*10000 + minor*100 + patch`) in
+`android/app/build.gradle`, so it always grows with the version. The app also sends the version to the server in its `hello` message (read from `package.json`).
 
-**Protokol versiyonu ayrı bir kavram:** WebSocket mesaj şeması (`hello`/`welcome` içindeki `clientVersion`/`serverVersion`) şu an sadece bilgi amaçlı gönderiliyor, uyumluluk kontrolü yapmıyor. İleride (Aşama 5, eşleştirme) bir `protocolVersion` tamsayısı eklenip sunucu/istemci uyuşmazsa kullanıcıya net bir "istemcini güncelle" mesajı gösterilmesi planlanıyor — bu SemVer'den bağımsız, basit artan bir sayı olacak (protokol her değiştiğinde +1).
+## Independent of the server and the plugins
 
-## MAJOR / MINOR / PATCH neyi ifade eder
-- **MAJOR:** Geriye uyumsuz bir değişiklik.
-  - Server/Client: mevcut bir WebSocket mesajının alanı kaldırılıyor/anlamı değişiyor, `hello` akışı değişiyor.
-  - Plugin SDK: `IActionHandler`, `IVariableStore`, `IVariableProvider`, `IDeviceController`, `ActionContext` gibi arayüzlerden biri kırılıyor (imza değişiyor, üye kaldırılıyor). **Bu, o SDK sürümüne yazılmış tüm plugin'lerin yeniden derlenmesini gerektirir.**
-  - Plugin: kendi `plugin.json` ayar şemasını veya action/variable adlarını geriye uyumsuz değiştiriyor (kullanıcının kayıtlı profilindeki aksiyon ayarları artık anlamsızlaşıyor).
-- **MINOR:** Geriye uyumlu yeni özellik.
-  - Yeni bir widget tipi, yeni bir built-in aksiyon (`core.*`), yeni bir opsiyonel protokol alanı/mesaj tipi, SDK'ya yeni bir opsiyonel arayüz/üye eklenmesi.
-- **PATCH:** Davranış değişmeden hata düzeltmesi, performans, iç refactor.
+The app, the server ([macro-grid](https://github.com/Deccoyi/macro-grid)) and the plugins ([macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin)) each have their own version. A
+change here does not bump the others.
 
-## Plugin uyumluluk beyanı
-Her plugin, hangi Plugin SDK sürümüyle derlendiğini `plugin.json` içinde beyan eder (henüz uygulanmadı, Aşama 6'da eklenecek şema):
+They talk over a WebSocket. The versions in `hello` and `welcome` are informational and nothing checks them. Compatibility is kept by **negotiating optional features**: the app lists the ones it
+understands in `hello.capabilities` (`assets`, `layout.patch`), and the server sends the older, plain form to a client that lists nothing, so a newer server keeps working with an older app and the
+reverse. New optional protocol features should be added the same way. Removing or changing the meaning of an existing message or field is a breaking change.
 
-```json
-{
-  "id": "obs",
-  "name": "OBS Kontrolü",
-  "version": "1.2.0",
-  "sdkVersion": "^1.0.0",
-  "minServerVersion": "0.4.0"
-}
-```
+## Releasing
 
-- `sdkVersion`: npm tarzı caret aralığı (`^1.0.0` → `1.x.x` ile uyumlu, `2.0.0` ile değil). Host, plugin'i yüklemeden önce kendi Plugin SDK sürümüyle bu aralığı karşılaştırır; uyuşmazsa plugin'i **yüklemez** ve editörde net bir uyarı gösterir ("Bu plugin SDK 2.x istiyor, sunucu 1.x kullanıyor").
-- `minServerVersion`: plugin'in ihtiyaç duyduğu asgari server (Host) sürümü — ör. plugin bir `IDeviceController` metodunu kullanıyorsa ve o metot server 0.4.0'da eklendiyse.
-- Bu iki alan sayesinde "hangi plugin hangi sürümle çalışıyor" editördeki plugin listesinde tek bakışta görülebilir (yükleniyor/uyumsuz/güncel değil).
+Work happens on the `dev` branch and is merged into `main` for a release. Before a merge to `main` the maintainer decides whether the version is bumped and by how much; a version number is never
+changed silently. When a bump is approved both changelogs get their entry:
 
-## Branch → main geçişinde versiyon bump'ı
-**Kural: `development` (veya çalışılan branch) `main`'e merge edilmeden önce, versiyonun bump edilip edilmeyeceği ve MAJOR/MINOR/PATCH'ten hangisi olacağı HER SEFERİNDE kullanıcıya sorulur.** Otomatik/sessiz bump yapılmaz — kullanıcı onaylamadan sürüm numarası değiştirilmez ve `main`'e merge edilmez.
+- `docs/CHANGELOG-developer.md`: detailed and technical, in [Keep a Changelog](https://keepachangelog.com/) format.
+- `docs/CHANGELOG.md`: short, plain sentences for people who are not developers, with no code, file or API names and without small fixes or internal changes.
 
-Henüz `development`/`main` branch'leri kurulmadı (repo `master` üzerinde, ilk commit atılmadı). Bu branch'ler kurulduğunda bu kural geçerli olacak.
-
-## Changelog
-`docs/CHANGELOG.md` [Keep a Changelog](https://keepachangelog.com/) formatında tutulur; bir versiyon bump'ı onaylandığında o girdi de eklenir.
+Both are written in English. See [release.md](release.md) for building and signing the APK.

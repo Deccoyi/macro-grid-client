@@ -13,6 +13,11 @@
         <!-- Required by @capacitor-mlkit/barcode-scanning (QR pairing) -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
 
+        <!-- Without this, Android 16+ (targetSdk 36) silently ignores ScreenOrientation.lock() on large
+             screens (tablets) — this app is a fixed deck, not a resizable/multi-window one, so the lock
+             should always apply. See @capacitor/screen-orientation's lock() doc comment. -->
+        <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -43,4 +48,5 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

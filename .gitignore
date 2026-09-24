@@ -38,6 +38,8 @@ android/app/src/main/assets/capacitor.plugins.json
 *.aab
 *.keystore
 *.jks
+# Release signing secrets, see docs/release.md.
+android/keystore.properties
 
 # ============================================================
 # Logs
@@ -52,3 +54,14 @@ android/app/src/main/assets/capacitor.plugins.json
 *.iml
 .DS_Store
 Thumbs.db
+
+# ============================================================
+# Release output (scripts/build-release-apk.ps1)
+# ============================================================
+artifacts/
+
+# ============================================================
+# Local tooling state (per-machine)
+# ============================================================
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

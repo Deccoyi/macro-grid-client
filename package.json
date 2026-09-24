@@ -1,5 +1,5 @@
 {
-  "name": "macro-station-client",
+  "name": "macro-grid-client",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,6 +11,7 @@
     "dev": "vite --port 5191",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "npm test -w @macro/renderer",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android"
   },
@@ -20,6 +21,7 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
+    "@capacitor/screen-orientation": "^8.0.1",
     "@macro/renderer": "file:packages/renderer",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

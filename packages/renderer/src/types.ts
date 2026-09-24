@@ -1,5 +1,5 @@
 /**
- * Mirrors server/src/MacroStation.Core/Model/Profile.cs and MacroStation.Protocol/Messages.cs.
+ * Mirrors server/src/MacroGrid.Core/Model/Profile.cs and MacroGrid.Protocol/Messages.cs.
  * Field names are camelCase because the server serializes with JsonSerializerDefaults.Web.
  * Keep this in sync by hand for now; a generated-types step can replace it later.
  */
@@ -126,6 +126,6 @@ export interface WidgetState {
   text?: string;
   value?: number;
   active?: boolean;
-  /** From a dynamized property (see DynamicBinding server-side): property name to resolved value ("animation" is one of WidgetAnimation, the rest are CSS colors). */
-  style?: Partial<Record<"background" | "foreground" | "borderColor" | "animation", string>>;
+  /** From a dynamized property (see DynamicBinding server-side): property name to resolved value ("animation" is one of WidgetAnimation, "icon" is an image URL or an empty string for no icon, the rest are CSS colors). */
+  style?: Partial<Record<"background" | "foreground" | "borderColor" | "animation" | "icon", string>>;
 }

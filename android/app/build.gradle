@@ -1,14 +1,28 @@
 apply plugin: 'com.android.application'
 
+// The app version comes from package.json (the single place the client version lives, see docs/versioning.md):
+// versionName is the semver string, versionCode is major*10000 + minor*100 + patch so it always grows with it.
+def appPackage = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+def appVersionParts = appPackage.version.tokenize('.').collect { it.toInteger() }
+def appVersionCode = appVersionParts[0] * 10000 + appVersionParts[1] * 100 + appVersionParts[2]
+
+// Release signing: android/keystore.properties (never committed) points at the keystore and holds its
+// passwords, see docs/release.md. Without it, assembleRelease still works but produces an unsigned APK.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
-    namespace = "com.macrostation.client"
+    namespace = "com.macrogrid.client"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.macrostation.client"
+        applicationId "com.macrogrid.client"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appPackage.version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +30,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

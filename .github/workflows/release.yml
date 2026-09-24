@@ -1,0 +1,90 @@
+name: Release
+
+# Runs when a tag such as client-v0.1.0 is pushed. It builds the APK and attaches it to a DRAFT
+# release; the maintainer reviews and publishes the draft by hand (see docs/release.md).
+on:
+  push:
+    tags: ["client-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+
+      - name: Check that the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "client-v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${version}" >&2
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx cap sync android
+
+      # Signed build, only when the keystore secrets exist. The keystore is written to the runner's
+      # temp folder and android/keystore.properties is git-ignored; nothing is committed.
+      - name: Build signed release APK
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+          ./gradlew assembleRelease
+          mkdir -p ../artifacts
+          cp app/build/outputs/apk/release/*.apk "../artifacts/MacroGrid-${VERSION}.apk"
+          rm -f keystore.properties "$RUNNER_TEMP/release.jks"
+
+      # No secrets: a debug-signed APK. It installs on a phone but is NOT a real release build and
+      # cannot be updated over a later release-signed one.
+      - name: Build debug-signed APK (no keystore secrets)
+        if: env.HAS_KEYSTORE != 'true'
+        working-directory: android
+        run: |
+          ./gradlew assembleDebug
+          mkdir -p ../artifacts
+          cp app/build/outputs/apk/debug/*.apk "../artifacts/MacroGrid-${VERSION}-debug.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macro-grid-apk
+          path: artifacts/*.apk
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=docs/release-notes-client-v0.x-alpha.md
+          gh release create "${GITHUB_REF_NAME}" artifacts/*.apk \
+            --draft --prerelease \
+            --title "Macro Grid client ${VERSION} (alpha)" \
+            --notes-file "$notes"

@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an idea for the Android app
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Ideas that need a change in the server or editor belong in the [macro-grid](https://github.com/Deccoyi/macro-grid/issues/new/choose) repository.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that is hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: How could it work? Alternatives you considered are welcome.
+    validations:
+      required: true
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to work on it?
+      options: ["No", "Yes, with some guidance", "Yes"]

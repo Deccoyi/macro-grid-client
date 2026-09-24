@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ActionErrorToast } from "./components/ActionErrorToast";
+import { StatusBadge } from "./components/StatusBadge";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
 import { getDeviceId } from "./storage/deviceId";
 import { t } from "./i18n";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "./native/gestureExclusion";
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
-import { SettingsButton, SettingsPanel } from "./SettingsPanel";
+import { SettingsButton, SettingsPanel } from "./components/SettingsPanel";
 import { forgetServer, loadServers, rememberServer } from "./storage/servers";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
@@ -837,49 +839,6 @@ function ConnectScreen({
           </button>
         </>
       )}
-    </div>
-  );
-}
-
-function ActionErrorToast({ message }: { message: string }) {
-  return (
-    <div
-      style={{
-        position: "fixed",
-        left: "50%",
-        bottom: "max(24px, env(safe-area-inset-bottom, 0px))",
-        transform: "translateX(-50%)",
-        maxWidth: "min(420px, calc(100vw - 32px))",
-        padding: "10px 16px",
-        borderRadius: 10,
-        background: "rgba(127,29,29,.95)",
-        color: "#fecaca",
-        fontSize: 13,
-        lineHeight: 1.4,
-        boxShadow: "0 4px 16px rgba(0,0,0,.4)",
-        zIndex: 200,
-      }}
-    >
-      {message}
-    </div>
-  );
-}
-
-function StatusBadge({ status, usingCache }: { status: ConnectionStatus; usingCache: boolean }) {
-  const label = status === "connecting" ? t("badge.connecting") : usingCache ? t("badge.offlineCached") : t("badge.offline");
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: "max(10px, env(safe-area-inset-top, 0px))",
-        right: "max(10px, env(safe-area-inset-right, 0px))",
-        zIndex: 100,
-        fontSize: 11,
-        padding: "4px 10px",
-        borderRadius: 999, background: "rgba(0,0,0,.6)", color: status === "connecting" ? "#facc15" : "#ef4444",
-      }}
-    >
-      {label}
     </div>
   );
 }

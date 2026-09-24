@@ -19,7 +19,7 @@ actions on the PC, with live values coming back. It is an Android app built with
 > install, which devices you pair, which plugins you run and which buttons you press. The installer and the app ask you to accept the
 > [user agreement](https://github.com/Deccoyi/macro-grid/blob/main/installer/license-agreement.txt). See also [LICENSE](LICENSE) (MIT).
 
-The server and editor are in [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin).
+Website and download: <https://deccoyi.github.io/macro-grid-client/>. The server and editor are in [macro-grid](https://github.com/Deccoyi/macro-grid) ([site](https://deccoyi.github.io/macro-grid/)) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin) ([store](https://deccoyi.github.io/macro-grid-plugin/store/)).
 The three are versioned independently. This app needs a Macro Grid server on the same network; without one it only shows its connect screen.
 
 > **Alpha software.** Expect rough edges and changes between versions.
@@ -39,7 +39,7 @@ The three are versioned independently. This app needs a Macro Grid server on the
 - **Kiosk mode** (full screen, on by default), an **orientation lock**, and **keep-awake** while a profile is shown.
 - Shows a short **error toast** when an action fails on the server.
 
-The app's screens are currently in Turkish only.
+The app opens in Turkish when the phone's language is Turkish and in English otherwise.
 
 ## Requirements
 
@@ -49,10 +49,10 @@ The app's screens are currently in Turkish only.
 ## Install
 
 1. Install and start the **Macro Grid server** on your Windows PC first ([macro-grid](https://github.com/Deccoyi/macro-grid), see its Releases). The app does nothing without it.
-2. Download the APK from this repository's [Releases](https://github.com/Deccoyi/macro-grid-client/releases) page and open it on the phone (allow installing from your browser or file manager when Android asks).
+2. Download the APK from this repository's [Releases](https://github.com/Deccoyi/macro-grid-client/releases) page and open it on the phone (allow installing from your browser or file manager when Android asks). The [download page](https://deccoyi.github.io/macro-grid-client/download) lists the latest version and the previous ones.
 3. Open the app, then scan the QR code in the editor's Pairing window or enter the server address and PIN.
 
-Plugins for the server are in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin). No release may exist yet while the project is being prepared; you can build the APK yourself (below). See [docs/release.md](docs/release.md).
+Plugins for the server are in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin). You can also build the APK yourself (below). See [docs/release.md](docs/release.md).
 
 ## Build from source
 

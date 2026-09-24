@@ -1,6 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useData } from 'vitepress'
 import { data } from '../releases.data'
+import { langOf } from '../i18n'
+
+const { lang } = useData()
+const isTr = computed(() => langOf(lang.value) === 'tr')
+const T = {
+  en: {
+    alpha: 'alpha', latest: 'Latest release', version: 'Version', released: 'Released', apk: 'Download APK',
+    openPage: 'Open the release page', notes: 'Release notes', download: 'Download', onGithub: 'Releases are on GitHub',
+    failed: 'The release list could not be loaded right now, or no release has been published yet. You can always get the APK from GitHub.',
+    goGithub: 'Go to GitHub Releases', previous: 'Previous versions',
+  },
+  tr: {
+    alpha: 'alfa', latest: 'Son sürüm', version: 'Sürüm', released: 'Yayın tarihi:', apk: 'APK indir',
+    openPage: 'Sürüm sayfasını aç', notes: 'Sürüm notları', download: 'İndir', onGithub: "Sürümler GitHub'da",
+    failed: "Sürüm listesi şu anda yüklenemedi ya da henüz bir sürüm yayımlanmadı. APK'yı her zaman GitHub'dan edinebilirsiniz.",
+    goGithub: "GitHub Sürümleri'ne git", previous: 'Önceki sürümler',
+  },
+}
+const t = computed(() => T[isTr.value ? 'tr' : 'en'])
 
 const RELEASES_URL = 'https://github.com/Deccoyi/macro-grid-client/releases'
 
@@ -10,6 +30,7 @@ const previous = computed(() => data.releases.slice(1, 4))
 function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
+  if (isTr.value) return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
   return d.toISOString().slice(0, 10)
 }
 function formatSize(bytes: number): string {
@@ -21,47 +42,48 @@ function formatSize(bytes: number): string {
 <template>
   <div class="dl">
     <section v-if="latest" class="hero">
-      <div class="label">Latest release</div>
+      <div class="label">{{ t.latest }}</div>
       <h2 class="ver">
-        Version {{ latest.version }}
-        <span v-if="latest.prerelease" class="badge">alpha</span>
+        {{ t.version }} {{ latest.version }}
+        <span v-if="latest.prerelease" class="badge">{{ t.alpha }}</span>
       </h2>
-      <div class="meta">Released {{ formatDate(latest.publishedAt) }}</div>
+      <div class="meta">{{ t.released }} {{ formatDate(latest.publishedAt) }}</div>
       <div class="actions">
-        <a v-if="latest.apk" class="btn brand" :href="latest.apk.url">Download APK</a>
-        <a v-else class="btn brand" :href="latest.notesUrl">Open the release page</a>
-        <a class="btn alt" :href="latest.notesUrl">Release notes</a>
+        <a v-if="latest.apk" class="btn brand" :href="latest.apk.url">{{ t.apk }}</a>
+        <a v-else class="btn brand" :href="latest.notesUrl">{{ t.openPage }}</a>
+        <a class="btn alt" :href="latest.notesUrl">{{ t.notes }}</a>
       </div>
       <div v-if="latest.apk" class="file">{{ latest.apk.name }} &middot; {{ formatSize(latest.apk.size) }}</div>
     </section>
 
     <section v-else class="hero">
-      <div class="label">Download</div>
-      <h2 class="ver">Releases are on GitHub</h2>
-      <p class="meta">The release list could not be loaded right now, or no release has been published yet. You can always get the APK from GitHub.</p>
+      <div class="label">{{ t.download }}</div>
+      <h2 class="ver">{{ t.onGithub }}</h2>
+      <p class="meta">{{ t.failed }}</p>
       <div class="actions">
-        <a class="btn brand" :href="RELEASES_URL">Go to GitHub Releases</a>
+        <a class="btn brand" :href="RELEASES_URL">{{ t.goGithub }}</a>
       </div>
     </section>
 
     <section v-if="previous.length" class="prev">
-      <h3>Previous versions</h3>
+      <h3>{{ t.previous }}</h3>
       <ul>
         <li v-for="r in previous" :key="r.tag">
           <div class="info">
             <strong>{{ r.version }}</strong>
-            <span v-if="r.prerelease" class="badge">alpha</span>
+            <span v-if="r.prerelease" class="badge">{{ t.alpha }}</span>
             <span class="date">{{ formatDate(r.publishedAt) }}</span>
           </div>
           <div class="links">
             <a v-if="r.apk" :href="r.apk.url">APK ({{ formatSize(r.apk.size) }})</a>
-            <a :href="r.notesUrl">Release notes</a>
+            <a :href="r.notesUrl">{{ t.notes }}</a>
           </div>
         </li>
       </ul>
     </section>
 
-    <p class="older">Older versions are on the <a :href="RELEASES_URL">GitHub Releases page</a>.</p>
+    <p v-if="isTr" class="older">Daha eski sürümler <a :href="RELEASES_URL">GitHub Sürümler sayfasında</a>.</p>
+    <p v-else class="older">Older versions are on the <a :href="RELEASES_URL">GitHub Releases page</a>.</p>
   </div>
 </template>
 

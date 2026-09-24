@@ -40,7 +40,7 @@ Tags are named `client-vX.Y.Z` (the server uses `server-v...`, plugins `plugin-<
 
 1. On `dev`: decide the version bump ([versioning.md](versioning.md)), set `version` in `package.json` and move `[Unreleased]` in both changelogs to the new version.
 2. Run `npm ci`, `npm run typecheck`, `npm test` and `npm run build`; CI on `dev` must be green.
-3. Build the signed APK (`scriptsuild-release-apk.ps1`), verify it with `apksigner`, install it on a real phone and pair against the release server.
+3. Build the signed APK (`scripts\build-release-apk.ps1`), verify it with `apksigner`, install it on a real phone and pair against the release server.
 4. Update `docs/release-notes-client-v0.x-alpha.md` (from the public `CHANGELOG.md`).
 5. Merge `dev` into `main`, then tag: `git tag client-vX.Y.Z` and push the tag.
 6. The `Release` workflow (`.github/workflows/release.yml`) builds the APK and creates a **draft** pre-release. Review it, replace or confirm the APK, then publish the draft.

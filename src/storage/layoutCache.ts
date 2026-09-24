@@ -5,7 +5,7 @@ import { readJson, writeJson } from "./storage";
 
 /** `profile` still carries compact `asset:` references (icons live once each in the asset cache), so the
  * cache stays small however many widgets share an icon. It is resolved for display with resolveAssetRefs. */
-export interface LayoutCache {
+interface LayoutCache {
   profile: Profile;
   pageId: string;
 }

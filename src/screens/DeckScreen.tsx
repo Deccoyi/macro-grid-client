@@ -26,7 +26,7 @@ const deckStyle: CSSProperties = {
   overflow: "hidden",
 };
 
-export type WidgetEventType = "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap";
+type WidgetEventType = "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap";
 
 interface DeckScreenProps {
   page: Profile["pages"][number];

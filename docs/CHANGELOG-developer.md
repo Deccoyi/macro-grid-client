@@ -5,6 +5,14 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+### Changed
+- Internal cleanup with the same behavior (branch `refactor/cleanup`, details in `refactor-notes.md`): `App.tsx` split into screens, components and hooks, a single storage helper for localStorage, `native/` and `storage/` folders, hoisted typed style constants, unit tests for the app code, renderer typecheck in `npm run typecheck`, renderer React peer range corrected to `^19.0.0`.
+
+### Removed
+- Unused `@capacitor/app` dependency (with its license text and notice entry).
+
+### Added
+- `docs/engineering-guidelines.md` and `docs/proposals/`.
 
 ## [0.1.1] - 2026-09-24
 ### Added

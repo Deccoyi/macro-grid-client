@@ -1,7 +1,7 @@
 import { registerPlugin } from "@capacitor/core";
 import { callNative } from "./bridge";
 
-export interface GestureExclusionZone {
+interface GestureExclusionZone {
   top: number;
   height: number;
   width: number;

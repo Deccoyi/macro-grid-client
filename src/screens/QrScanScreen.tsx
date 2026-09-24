@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BarcodeFormat, BarcodeScanner } from "@capacitor-mlkit/barcode-scanning";
-import { t } from "./i18n";
+import { t } from "../i18n";
 
 export interface ScannedPairing {
   host: string;

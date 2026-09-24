@@ -6,7 +6,8 @@ import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/rendere
 import { getDeviceId } from "./storage/deviceId";
 import { t } from "./i18n";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "./native/gestureExclusion";
-import { QrScanScreen, type ScannedPairing } from "./QrScan";
+import { ConnectScreen } from "./screens/ConnectScreen";
+import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
 import { SettingsButton, SettingsPanel } from "./components/SettingsPanel";
 import { forgetServer, loadServers, rememberServer } from "./storage/servers";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
@@ -710,135 +711,5 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
         </svg>
       </span>
     </button>
-  );
-}
-
-function ConnectScreen({
-  host,
-  status,
-  onHostChange,
-  onConnect,
-  onSubmitPin,
-  onScanQr,
-  servers,
-  onPickServer,
-  onCancel,
-}: {
-  host: string;
-  status: ConnectionStatus;
-  onHostChange: (v: string) => void;
-  onConnect: () => void;
-  onSubmitPin: (pin: string) => void;
-  onScanQr: () => void;
-  servers: string[];
-  onPickServer: (host: string) => void;
-  onCancel?: () => void;
-}) {
-  const [pin, setPin] = useState("");
-  const pairing = status === "pairing_required";
-
-  return (
-    <div
-      style={{
-        display: "flex", flexDirection: "column", gap: 14, alignItems: "center", justifyContent: "center",
-        width: "100vw", height: "100vh", background: "#0b0d10", color: "#e6e7ea", fontFamily: "system-ui, sans-serif",
-        padding: "max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px))",
-        boxSizing: "border-box",
-      }}
-    >
-      <h1 style={{ fontSize: 20, margin: 0 }}>Macro Grid</h1>
-
-      {!pairing && (
-        <>
-          <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0 }}>
-            {t("connect.hint")}
-          </p>
-          <input
-            value={host}
-            onChange={(e) => onHostChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onConnect()}
-            placeholder="192.168.1.20:9820"
-            style={{
-              width: "100%", maxWidth: 320, padding: "10px 12px", fontSize: 16, borderRadius: 8,
-              border: "1px solid #2d3136", background: "#16181c", color: "#e6e7ea",
-            }}
-          />
-          <button
-            onClick={onConnect}
-            style={{
-              padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "none",
-              background: "#3b82f6", color: "white", cursor: "pointer",
-            }}
-          >
-            {t("connect.button")}
-          </button>
-          <button
-            onClick={onScanQr}
-            style={{
-              padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "1px solid #2d3136",
-              background: "transparent", color: "#e6e7ea", cursor: "pointer",
-            }}
-          >
-            {t("connect.scanQr")}
-          </button>
-          {servers.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: 320, marginTop: 6 }}>
-              <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>{t("connect.savedServers")}</span>
-              {servers.map((h) => (
-                <button
-                  key={h}
-                  onClick={() => onPickServer(h)}
-                  style={{
-                    padding: "10px 12px", fontSize: 14, borderRadius: 8, border: "1px solid #2d3136", background: "#16181c",
-                    color: "#e6e7ea", cursor: "pointer", textAlign: "left", fontFamily: "ui-monospace, monospace",
-                  }}
-                >
-                  {h}
-                </button>
-              ))}
-            </div>
-          )}
-          {onCancel && (
-            <button onClick={onCancel} style={{ border: "none", background: "transparent", color: "#9aa0a8", fontSize: 14, cursor: "pointer", padding: 8 }}>
-              {t("connect.cancel")}
-            </button>
-          )}
-          {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>{t("connect.connecting")}</span>}
-          {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>{t("connect.retrying")}</span>}
-        </>
-      )}
-
-      {pairing && (
-        <>
-          <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 }}>
-            {t("connect.pairHint")}
-          </p>
-          <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            onKeyDown={(e) => e.key === "Enter" && pin.length === 6 && onSubmitPin(pin)}
-            placeholder="000000"
-            inputMode="numeric"
-            autoFocus
-            style={{
-              width: "100%", maxWidth: 200, padding: "10px 12px", fontSize: 28, borderRadius: 8, textAlign: "center",
-              letterSpacing: ".2em", fontFamily: "ui-monospace, monospace",
-              border: "1px solid #2d3136", background: "#16181c", color: "#e6e7ea",
-            }}
-          />
-          <button
-            onClick={() => onSubmitPin(pin)}
-            disabled={pin.length !== 6}
-            style={{
-              padding: "10px 24px", fontSize: 15, borderRadius: 8, border: "none",
-              background: pin.length === 6 ? "#3b82f6" : "#2d3136", color: "white",
-              cursor: pin.length === 6 ? "pointer" : "default",
-            }}
-          >
-            {t("connect.pair")}
-          </button>
-        </>
-      )}
-    </div>
   );
 }

@@ -28,6 +28,11 @@ updates:
       deps:
         patterns: ["*"]
     target-branch: dev
+    ignore:
+      # Gradle 9.6+ removed an API that Android Gradle Plugin 8.13 still uses, so the build breaks.
+      # Only patch updates until the project moves to AGP 9.
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

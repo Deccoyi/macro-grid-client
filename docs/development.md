@@ -8,7 +8,7 @@ How to build, run and test the phone app, and the pitfalls that are easy to hit.
 - [Node.js](https://nodejs.org/) 20 or newer.
 - For Android: Android Studio (or the Android SDK command line tools) and a JDK, with the `JAVA_HOME` and `ANDROID_HOME` environment variables set. The Android project
   targets API 36 (`android/variables.gradle`); install that platform in the SDK Manager if Gradle asks for it.
-- A running Macro Station server to connect to (see the server repository).
+- A running Macro Grid server to connect to (see the server repository).
 
 ## Run in a browser
 
@@ -34,7 +34,7 @@ To install a debug build on a phone with USB debugging turned on:
 cd android
 .\gradlew.bat assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
-adb shell am start -n com.macrostation.client/.MainActivity
+adb shell am start -n com.macrogrid.client/.MainActivity
 ```
 
 `adb` is in the SDK's `platform-tools` folder and is usually not on the `PATH`. In Git Bash, paths that look like Unix paths on the device (`/sdcard/...`) are rewritten by MSYS; set

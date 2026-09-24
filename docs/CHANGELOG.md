@@ -1,6 +1,6 @@
 # Changelog
 
-New features and fixes in the Macro Station phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
+New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
 ### New

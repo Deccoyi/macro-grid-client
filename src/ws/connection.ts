@@ -4,7 +4,7 @@ import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
 import { version as CLIENT_VERSION } from "../../package.json";
 
 /**
- * Every frame is { type, data }, matching MacroStation.Protocol.Envelope server-side. This client
+ * Every frame is { type, data }, matching MacroGrid.Protocol.Envelope server-side. This client
  * only needs the message types Stage 5 actually uses; the rest (page.change echo, value push, etc.)
  * can be added the same way when the drawer/slider work lands.
  */

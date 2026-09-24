@@ -1,4 +1,4 @@
-package com.macrostation.client;
+package com.macrogrid.client;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

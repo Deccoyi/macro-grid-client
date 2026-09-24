@@ -1,7 +1,7 @@
-# Contributing to the Macro Station client
+# Contributing to the Macro Grid client
 
 Thanks for your interest. This repository is the Android phone and tablet app. The server and editor are in
-[macro-station](https://github.com/Deccoyi/macro-station) and the plugins in [macro-station-plugin](https://github.com/Deccoyi/macro-station-plugin); each has its own version and rules.
+[macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin); each has its own version and rules.
 
 ## Getting set up
 

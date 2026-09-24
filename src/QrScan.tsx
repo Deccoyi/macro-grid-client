@@ -7,20 +7,20 @@ export interface ScannedPairing {
 }
 
 /**
- * Accepts whatever format the editor ends up encoding the pairing QR in — a `macrostation://pair`
+ * Accepts whatever format the editor ends up encoding the pairing QR in — a `macrogrid://pair`
  * URI, or a plain `ip:port:pin` / `ip:port` string — so client and server can settle on the final
  * format independently without a synchronized release. Returns null for anything unrecognized.
  */
 function parsePairingQr(raw: string): ScannedPairing | null {
   const trimmed = raw.trim();
 
-  if (/^macrostation:\/\//i.test(trimmed)) {
+  if (/^macrogrid:\/\//i.test(trimmed)) {
     try {
       const url = new URL(trimmed);
       const ip = url.searchParams.get("host");
       if (!ip) return null;
       // The editor encodes host and port as separate query params (confirmed from a real scanned
-      // code: macrostation://pair?host=192.168.1.20&port=9820&pin=...) rather than "ip:port" in a
+      // code: macrogrid://pair?host=192.168.1.20&port=9820&pin=...) rather than "ip:port" in a
       // single host param — ServerConnection needs them combined into one "ip:port" string.
       const port = url.searchParams.get("port");
       const host = port ? `${ip}:${port}` : ip;
@@ -77,7 +77,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
           if (!raw) return;
           const parsed = parsePairingQr(raw);
           if (!parsed) {
-            setError("Bu QR kod bir Macro Station eşleştirme kodu değil.");
+            setError("Bu QR kod bir Macro Grid eşleştirme kodu değil.");
             return;
           }
           setPending(parsed);

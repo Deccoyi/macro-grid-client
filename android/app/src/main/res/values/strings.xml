@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Macro Station</string>
-    <string name="title_activity_main">Macro Station</string>
-    <string name="package_name">com.macrostation.client</string>
-    <string name="custom_url_scheme">com.macrostation.client</string>
+    <string name="app_name">Macro Grid</string>
+    <string name="title_activity_main">Macro Grid</string>
+    <string name="package_name">com.macrogrid.client</string>
+    <string name="custom_url_scheme">com.macrogrid.client</string>
 </resources>

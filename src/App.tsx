@@ -10,14 +10,14 @@ import { applySettings, loadSettings, saveSettings, type AppSettings } from "./s
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 import { resolveAssetRefs } from "./ws/assets";
 
-const HOST_KEY = "macro-station.host";
+const HOST_KEY = "macro-grid.host";
 const EDGE_SWIPE_ZONE_PX = 56;
 const SWIPE_OPEN_THRESHOLD_PX = 60;
 /** A swipe across most of the screen width reads as "change page" rather than a stray drag — well past
  * anything a slider/knob drag (bounded to that one widget's cell) would ever cover, so the two gestures
  * don't fight once widgets grow their own drag handling. */
 const PAGE_SWIPE_THRESHOLD_PX = 90;
-const HANDLE_Y_KEY = "macro-station.drawerHandleY";
+const HANDLE_Y_KEY = "macro-grid.drawerHandleY";
 const HANDLE_WIDTH_PX = 18;
 const HANDLE_HEIGHT_PX = 64;
 // A quick swipe over the handle (to open the drawer) must never reposition it — only a deliberate
@@ -33,11 +33,11 @@ const HANDLE_HOLD_CANCEL_PX = 12;
 // where the OS gesture is cancelled but our own swipe-open check doesn't count it as "from the edge".
 const GESTURE_ZONE_HEIGHT_PX = 140;
 
-/** One pairing token per server host, so switching between two Macro Station servers doesn't require re-pairing every time you go back to one you've already paired with. */
-const tokenKey = (host: string) => `macro-station.token.${host}`;
+/** One pairing token per server host, so switching between two Macro Grid servers doesn't require re-pairing every time you go back to one you've already paired with. */
+const tokenKey = (host: string) => `macro-grid.token.${host}`;
 /** Last-known layout per host, so a cold start (app relaunch, not just a live reconnect) shows the
  * deck immediately instead of the connect screen while the first real layout.full is still in flight. */
-const layoutCacheKey = (host: string) => `macro-station.layoutCache.${host}`;
+const layoutCacheKey = (host: string) => `macro-grid.layoutCache.${host}`;
 
 /** `profile` still carries compact `asset:` references (icons live once each in the asset cache), so the
  * cache stays small however many widgets share an icon. It is resolved for display with resolveAssetRefs. */
@@ -793,12 +793,12 @@ function ConnectScreen({
         boxSizing: "border-box",
       }}
     >
-      <h1 style={{ fontSize: 20, margin: 0 }}>Macro Station</h1>
+      <h1 style={{ fontSize: 20, margin: 0 }}>Macro Grid</h1>
 
       {!pairing && (
         <>
           <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0 }}>
-            Bilgisayarındaki Macro Station sunucusunun IP adresini gir (aynı Wi-Fi'da olmalısınız).
+            Bilgisayarındaki Macro Grid sunucusunun IP adresini gir (aynı Wi-Fi'da olmalısınız).
           </p>
           <input
             value={host}
@@ -858,7 +858,7 @@ function ConnectScreen({
       {pairing && (
         <>
           <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 }}>
-            Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Station düzenleyicisinde "Eşleştirme"ye tıkla ve orada
+            Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Grid düzenleyicisinde "Eşleştirme"ye tıkla ve orada
             gösterilen 6 haneli PIN'i buraya gir.
           </p>
           <input

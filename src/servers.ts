@@ -1,8 +1,8 @@
-const SERVERS_KEY = "macro-station.servers";
+const SERVERS_KEY = "macro-grid.servers";
 
 /** Same keys App.tsx uses for per-host state — forgetting a server has to clear them too. */
-const tokenKey = (host: string) => `macro-station.token.${host}`;
-const layoutCacheKey = (host: string) => `macro-station.layoutCache.${host}`;
+const tokenKey = (host: string) => `macro-grid.token.${host}`;
+const layoutCacheKey = (host: string) => `macro-grid.layoutCache.${host}`;
 
 /** Every server this phone has successfully connected to, most recently used first. */
 export function loadServers(): string[] {

@@ -9,7 +9,7 @@ export interface AppSettings {
   orientation: OrientationSetting;
 }
 
-const KEY = "macro-station.settings";
+const KEY = "macro-grid.settings";
 const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto" };
 
 export function loadSettings(): AppSettings {

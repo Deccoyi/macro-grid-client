@@ -1,7 +1,7 @@
 # Architecture
 
 How the phone app works. The server side (protocol, actions, data model) is described in the
-[macro-station](https://github.com/Deccoyi/macro-station) repository's `docs/architecture.md`.
+[macro-grid](https://github.com/Deccoyi/macro-grid) repository's `docs/architecture.md`.
 
 ## Overview
 
@@ -39,7 +39,7 @@ beyond 400 entries. Resolving references keeps the identity of every part of the
 ## Screens and behavior
 
 - **Connect screen:** a server address field, the servers saved from earlier successful connections (a server is remembered once it has sent a layout), a QR scan button and the
-  PIN field when pairing is needed. The QR scanner accepts the editor's `macrostation://pair?host=<ip>&port=<port>&pin=<pin>` code (or a plain `ip:port` or `ip:port:pin`).
+  PIN field when pairing is needed. The QR scanner accepts the editor's `macrogrid://pair?host=<ip>&port=<port>&pin=<pin>` code (or a plain `ip:port` or `ip:port:pin`).
 - **Deck:** the current page as a grid. Widgets report `widget.down`, `widget.up`, `widget.longPress`, `widget.doubleTap` and, for sliders and knobs, `widget.value`; the
   device vibrates on touch. A horizontal swipe across most of the screen sends `page.next` or `page.prev`; the server also pushes `page.show` for `core.page` actions.
 - **Drawer:** opened by a swipe from the screen edge or a handle whose height you can drag along the edge. It lists the profiles (`profile.change`), shows the lock switch for
@@ -63,7 +63,7 @@ the two are deliberately not kept in sync, so a change that both need is made in
 
 ## Native Android pieces
 
-Two small Capacitor plugins in `android/app/src/main/java/com/macrostation/client/`:
+Two small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client/`:
 
 - `KioskPlugin`: Android's immersive mode (hides the status and navigation bars). It is re-applied whenever the window regains focus, because the system clears it when the
   notification shade is pulled down. It is not screen pinning; Android does not let an app do that on its own.

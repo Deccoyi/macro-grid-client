@@ -5,8 +5,8 @@
  * cold start needs no asset traffic at all for icons already seen.
  */
 
-const STORAGE_PREFIX = "macro-station.asset.";
-const INDEX_KEY = "macro-station.assets.index";
+const STORAGE_PREFIX = "macro-grid.asset.";
+const INDEX_KEY = "macro-grid.assets.index";
 /** Least-recently-used assets beyond this many are dropped from storage (they are refetched if needed again). */
 const MAX_STORED_ASSETS = 400;
 

@@ -1,6 +1,6 @@
 # Third-party notices
 
-The Macro Station client is released under the [MIT License](LICENSE) (Copyright (c) 2026 Deccoyi). It ships with the open-source and third-party components listed below.
+The Macro Grid client is released under the [MIT License](LICENSE) (Copyright (c) 2026 Deccoyi). It ships with the open-source and third-party components listed below.
 Each one stays under its own license. The original license texts are copied verbatim into the [`licenses/`](licenses/) folder, one sub-folder per library, and the
 table below points to them. The list was built from `package.json`, `package-lock.json`, the installed `node_modules` packages and the resolved Android release
 runtime classpath (`gradlew :app:dependencies --configuration releaseRuntimeClasspath`). Development-only tools (build, type-check and test tooling) are not part of

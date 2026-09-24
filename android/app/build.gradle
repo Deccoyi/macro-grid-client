@@ -15,10 +15,10 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.macrostation.client"
+    namespace = "com.macrogrid.client"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.macrostation.client"
+        applicationId "com.macrogrid.client"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode

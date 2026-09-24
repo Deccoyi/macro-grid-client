@@ -10,7 +10,7 @@ The single source is `version` in `package.json`. The Android `versionName` is t
 
 ## Independent of the server and the plugins
 
-The app, the server ([macro-station](https://github.com/Deccoyi/macro-station)) and the plugins ([macro-station-plugin](https://github.com/Deccoyi/macro-station-plugin)) each have their own version. A
+The app, the server ([macro-grid](https://github.com/Deccoyi/macro-grid)) and the plugins ([macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin)) each have their own version. A
 change here does not bump the others.
 
 They talk over a WebSocket. The versions in `hello` and `welcome` are informational and nothing checks them. Compatibility is kept by **negotiating optional features**: the app lists the ones it

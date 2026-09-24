@@ -20,7 +20,7 @@ if (-not $env:ANDROID_HOME) {
 }
 
 $version = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).version
-Write-Host "Macro Station client $version"
+Write-Host "Macro Grid client $version"
 
 Push-Location $root
 try {
@@ -43,7 +43,7 @@ if (-not $apk) { throw "No APK was produced." }
 
 $outDir = Join-Path $root "artifacts"
 New-Item -ItemType Directory -Force $outDir | Out-Null
-$name = if ($signed) { "MacroStation-$version.apk" } else { "MacroStation-$version-unsigned.apk" }
+$name = if ($signed) { "MacroGrid-$version.apk" } else { "MacroGrid-$version-unsigned.apk" }
 Copy-Item $apk.FullName (Join-Path $outDir $name) -Force
 Write-Host "Done: $(Join-Path $outDir $name)"
 if (-not $signed) { Write-Warning "Unsigned APK: a phone will not install it. Create a keystore first, see docs/release.md." }

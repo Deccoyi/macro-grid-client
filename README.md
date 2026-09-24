@@ -1,6 +1,6 @@
-# Macro Station client
+# Macro Grid client
 
-The phone and tablet app for [Macro Station](https://github.com/Deccoyi/macro-station). It connects over your local network to the Macro Station server running
+The phone and tablet app for [Macro Grid](https://github.com/Deccoyi/macro-grid). It connects over your local network to the Macro Grid server running
 on your Windows PC and shows the grid you designed in the server's editor as a full-screen touch deck: buttons, toggles, sliders and knobs that press keys and run
 actions on the PC, with live values coming back. It is an Android app built with Capacitor, React and TypeScript.
 
@@ -12,8 +12,8 @@ actions on the PC, with live values coming back. It is an Android app built with
 > **No warranty of any kind.** The software is provided "as is", without warranty of any kind, express or implied, including but not limited to
 > merchantability, fitness for a particular purpose and non-infringement. You use it entirely at your own risk. See [LICENSE](LICENSE) (MIT).
 
-The server and editor are in [macro-station](https://github.com/Deccoyi/macro-station) and the plugins in [macro-station-plugin](https://github.com/Deccoyi/macro-station-plugin).
-The three are versioned independently. This app needs a Macro Station server on the same network; without one it only shows its connect screen.
+The server and editor are in [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin).
+The three are versioned independently. This app needs a Macro Grid server on the same network; without one it only shows its connect screen.
 
 ## What it does
 
@@ -32,7 +32,7 @@ The app's screens are currently in Turkish only.
 ## Requirements
 
 - An Android phone or tablet (Android 7.0, API 24, or newer) on the same network as the server.
-- A running Macro Station server.
+- A running Macro Grid server.
 
 There are no published releases yet: build the APK yourself (below). See [docs/release.md](docs/release.md).
 

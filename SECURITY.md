@@ -21,7 +21,11 @@ For anything else about the project, open a normal issue. Please do not put vuln
 Helpful details: what is affected, the steps to reproduce, and what an attacker on the same network could do. A problem in the server or a plugin belongs in
 the [server](https://github.com/Deccoyi/macro-grid) or [plugin](https://github.com/Deccoyi/macro-grid-plugin) repository.
 
-This is a small project maintained in spare time, so there is no guaranteed response time, but reports are taken seriously.
+## This is a hobby project
+
+Macro Grid is a hobby project maintained in spare time, not a full-time job or a commercial product. Security reports are read and the
+maintainer will try to fix real problems, but there is no guaranteed response time, no guaranteed fix, no support schedule and no bug
+bounty. Fixes land when there is time for them. If that is not acceptable for how you use the software, do not rely on it.
 
 ## Supported versions
 

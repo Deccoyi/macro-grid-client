@@ -9,70 +9,30 @@ import { SettingsButton, SettingsPanel } from "./SettingsPanel";
 import { forgetServer, loadServers, rememberServer } from "./storage/servers";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
-import { resolveAssetRefs } from "./ws/assets";
-
-const HOST_KEY = "macro-grid.host";
-const EDGE_SWIPE_ZONE_PX = 56;
-const SWIPE_OPEN_THRESHOLD_PX = 60;
-/** A swipe across most of the screen width reads as "change page" rather than a stray drag — well past
- * anything a slider/knob drag (bounded to that one widget's cell) would ever cover, so the two gestures
- * don't fight once widgets grow their own drag handling. */
-const PAGE_SWIPE_THRESHOLD_PX = 90;
-const HANDLE_Y_KEY = "macro-grid.drawerHandleY";
-const HANDLE_WIDTH_PX = 18;
-const HANDLE_HEIGHT_PX = 64;
-// A quick swipe over the handle (to open the drawer) must never reposition it — only a deliberate
-// press-and-hold does. HANDLE_HOLD_MS is how long a still touch has to be held before it's treated as
-// "start dragging"; HANDLE_HOLD_CANCEL_PX is how far the finger may wander during that hold before it's
-// treated as a swipe/tap instead and the hold is cancelled.
-const HANDLE_HOLD_MS = 320;
-const HANDLE_HOLD_CANCEL_PX = 12;
-// The exclusion zone is deliberately bigger than the visible handle: a touch that lands just outside
-// the button but still inside the OS's back-gesture strip would otherwise get swallowed by Android
-// before onTouchStart/the edge-swipe-open logic ever sees it. The handle itself stays
-// HANDLE_WIDTH_PX/HANDLE_HEIGHT_PX; width matches EDGE_SWIPE_ZONE_PX so nothing falls in a dead zone
-// where the OS gesture is cancelled but our own swipe-open check doesn't count it as "from the edge".
-const GESTURE_ZONE_HEIGHT_PX = 140;
-
-/** One pairing token per server host, so switching between two Macro Grid servers doesn't require re-pairing every time you go back to one you've already paired with. */
-const tokenKey = (host: string) => `macro-grid.token.${host}`;
-/** Last-known layout per host, so a cold start (app relaunch, not just a live reconnect) shows the
- * deck immediately instead of the connect screen while the first real layout.full is still in flight. */
-const layoutCacheKey = (host: string) => `macro-grid.layoutCache.${host}`;
-
-/** `profile` still carries compact `asset:` references (icons live once each in the asset cache), so the
- * cache stays small however many widgets share an icon. It is resolved for display with resolveAssetRefs. */
-interface LayoutCache {
-  profile: Profile;
-  pageId: string;
-}
-
-function loadLayoutCache(host: string): LayoutCache | null {
-  if (!host) return null;
-  try {
-    const raw = localStorage.getItem(layoutCacheKey(host));
-    return raw ? (JSON.parse(raw) as LayoutCache) : null;
-  } catch {
-    return null;
-  }
-}
-
-function resolveCachedProfile(cache: LayoutCache | null): Profile | null {
-  return cache ? resolveAssetRefs(cache.profile) : null;
-}
-
-function saveLayoutCache(host: string, profile: Profile, pageId: string): void {
-  try {
-    localStorage.setItem(layoutCacheKey(host), JSON.stringify({ profile, pageId } satisfies LayoutCache));
-  } catch {
-    // Storage full or unavailable (private mode) — the cache is a nice-to-have, not essential.
-  }
-}
+import { HOST_KEY, tokenKey } from "./storage/keys";
+import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "./storage/layoutCache";
+import { readText, writeText } from "./storage/storage";
+import {
+  ACTION_ERROR_MS,
+  EDGE_SWIPE_ZONE_PX,
+  GESTURE_ZONE_HEIGHT_PX,
+  HANDLE_FRACTION_DEFAULT,
+  HANDLE_FRACTION_MAX,
+  HANDLE_FRACTION_MIN,
+  HANDLE_HEIGHT_PX,
+  HANDLE_HOLD_CANCEL_PX,
+  HANDLE_HOLD_MS,
+  HANDLE_WIDTH_PX,
+  PAGE_SWIPE_THRESHOLD_PX,
+  SWIPE_MAX_VERTICAL_PX,
+  SWIPE_OPEN_THRESHOLD_PX,
+} from "./constants";
+import { HANDLE_Y_KEY } from "./storage/keys";
 
 export function App() {
-  const [host, setHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
+  const [host, setHost] = useState(() => readText(HOST_KEY) ?? "");
   /** The server the socket is actually pointed at — `host` is just the connect screen's text field. */
-  const [activeHost, setActiveHost] = useState(() => localStorage.getItem(HOST_KEY) ?? "");
+  const [activeHost, setActiveHost] = useState(() => readText(HOST_KEY) ?? "");
   const [servers, setServers] = useState<string[]>(loadServers);
   /** Forces the connect screen over a live/cached deck so a second server can be added. */
   const [addingServer, setAddingServer] = useState(false);
@@ -103,7 +63,7 @@ export function App() {
 
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
-    localStorage.setItem(HOST_KEY, targetHost);
+    writeText(HOST_KEY, targetHost);
     setActiveHost(targetHost);
     setHost(targetHost);
     setAddingServer(false);
@@ -116,7 +76,7 @@ export function App() {
     setPageId(cached?.pageId ?? null);
     setUsingCache(cached !== null);
 
-    const connection = new ServerConnection(targetHost, getDeviceId(), t("device.name"), localStorage.getItem(tokenKey(targetHost)), {
+    const connection = new ServerConnection(targetHost, getDeviceId(), t("device.name"), readText(tokenKey(targetHost)), {
       onStatusChange: setStatus,
       onLayout: (nextProfile, nextPageId, cacheProfile) => {
         cacheProfileRef.current = cacheProfile;
@@ -126,11 +86,7 @@ export function App() {
         setUsingCache(false);
         // First layout means hello was accepted — only now is this a real, working server worth remembering.
         setServers(rememberServer(targetHost));
-        try {
-          localStorage.setItem(layoutCacheKey(targetHost), JSON.stringify({ profile: cacheProfile, pageId: nextPageId } satisfies LayoutCache));
-        } catch {
-          // Storage full or unavailable (private mode) — the cache is a nice-to-have, not essential.
-        }
+        saveLayoutCache(targetHost, cacheProfile, nextPageId);
       },
       onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
         cacheProfileRef.current = cacheProfile;
@@ -166,11 +122,11 @@ export function App() {
         }
       },
       onProfiles: (nextProfiles, nextAutoSwitch) => { setProfiles(nextProfiles); setAutoSwitch(nextAutoSwitch); },
-      onPaired: (token) => localStorage.setItem(tokenKey(targetHost), token),
+      onPaired: (token) => writeText(tokenKey(targetHost), token),
       onActionError: (message) => {
         if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
         setActionError(message);
-        actionErrorTimer.current = setTimeout(() => setActionError(null), 4000);
+        actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
       },
     });
     connectionRef.current = connection;
@@ -374,7 +330,7 @@ function DeckScreen({
     const t = e.changedTouches[0]!;
     const dx = t.clientX - start.x;
     const dy = Math.abs(t.clientY - start.y);
-    if (dy > 40) return;
+    if (dy > SWIPE_MAX_VERTICAL_PX) return;
     if (start.fromEdge && dx < -SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(true);
     else if (drawerOpen && dx > SWIPE_OPEN_THRESHOLD_PX) onDrawerOpenChange(false);
     // A long, mostly-horizontal swipe that isn't the drawer's own edge-open/close gesture changes page —
@@ -599,14 +555,12 @@ function ProfileDrawer({
   );
 }
 
+const clampHandleFraction = (n: number) => Math.min(HANDLE_FRACTION_MAX, Math.max(HANDLE_FRACTION_MIN, n));
+
 function loadHandleFraction(): number {
-  try {
-    const raw = localStorage.getItem(HANDLE_Y_KEY);
-    const n = raw ? Number(raw) : NaN;
-    return Number.isFinite(n) ? Math.min(0.92, Math.max(0.08, n)) : 0.5;
-  } catch {
-    return 0.5;
-  }
+  const raw = readText(HANDLE_Y_KEY);
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) ? clampHandleFraction(n) : HANDLE_FRACTION_DEFAULT;
 }
 
 /**
@@ -702,7 +656,7 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
       if (Math.hypot(t.clientX - d.anchorX, t.clientY - d.anchorY) > HANDLE_HOLD_CANCEL_PX) cancelHold();
       return;
     }
-    setTopFraction(Math.min(0.92, Math.max(0.08, d.anchorFraction + (t.clientY - d.anchorY) / window.innerHeight)));
+    setTopFraction(clampHandleFraction(d.anchorFraction + (t.clientY - d.anchorY) / window.innerHeight));
   };
 
   const endTouch = (e: React.TouchEvent) => {
@@ -717,11 +671,7 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
     // past HANDLE_HOLD_MS and triggered the vibration, still opens rather than silently doing nothing.
     const barelyMoved = Math.hypot(d.lastX - d.origX, d.lastY - d.origY) <= HANDLE_HOLD_CANCEL_PX;
     if (d.active && !barelyMoved) {
-      try {
-        localStorage.setItem(HANDLE_Y_KEY, String(topFractionRef.current));
-      } catch {
-        // Best-effort; the handle just resets to center next launch.
-      }
+      writeText(HANDLE_Y_KEY, String(topFractionRef.current)); // Best-effort; the handle just resets to center next launch.
     } else {
       onOpen();
     }

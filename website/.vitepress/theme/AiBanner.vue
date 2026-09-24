@@ -21,17 +21,24 @@
   justify-content: center;
   gap: 10px;
   padding: 0 16px;
-  background: #d97706;
-  color: #1c1e22;
+  background: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
   font-size: 13px;
   line-height: 1.3;
   text-align: center;
 }
+.ai-banner strong,
+.ai-banner a { white-space: nowrap; }
+.long {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ai-banner a {
-  color: #1c1e22;
+  color: inherit;
   font-weight: 700;
   text-decoration: underline;
-  white-space: nowrap;
 }
 @media (max-width: 720px) {
   .long { display: none; }

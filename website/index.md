@@ -12,6 +12,7 @@ hero:
     - theme: alt
       text: Read the guide
       link: https://deccoyi.github.io/macro-grid/guide/phone-app
+      target: _self
 features:
   - title: Connect by QR code
     details: Scan the QR code in the editor's Pairing window, enter the server address, or pick a server the app remembers. Pair once with a six-digit PIN and it reconnects on its own.

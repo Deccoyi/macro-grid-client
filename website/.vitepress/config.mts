@@ -19,12 +19,17 @@ export default defineConfig({
     logo: '/logo.png',
     search: { provider: 'local' },
     nav: [
-      { text: 'Home', link: '/' },
       { text: 'Download', link: '/download' },
       { text: 'Install', link: '/install' },
       { text: 'Changelog', link: '/changelog' },
-      { text: 'Macro Grid (PC)', link: 'https://deccoyi.github.io/macro-grid/' },
-      { text: 'Plugins', link: 'https://deccoyi.github.io/macro-grid-plugin/store/' },
+      {
+        text: 'Macro Grid',
+        items: [
+          { text: 'PC server site', link: 'https://deccoyi.github.io/macro-grid/' },
+          { text: 'Plugin store', link: 'https://deccoyi.github.io/macro-grid-plugin/store/' },
+          { text: 'Phone app guide', link: 'https://deccoyi.github.io/macro-grid/guide/phone-app' },
+        ],
+      },
     ],
     sidebar: [
       {

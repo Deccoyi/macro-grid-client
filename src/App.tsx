@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
 import { getDeviceId } from "./deviceId";
+import { t } from "./i18n";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "./gestureExclusion";
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
 import { SettingsButton, SettingsPanel } from "./SettingsPanel";
@@ -115,7 +116,7 @@ export function App() {
     setPageId(cached?.pageId ?? null);
     setUsingCache(cached !== null);
 
-    const connection = new ServerConnection(targetHost, getDeviceId(), "Telefon", localStorage.getItem(tokenKey(targetHost)), {
+    const connection = new ServerConnection(targetHost, getDeviceId(), t("device.name"), localStorage.getItem(tokenKey(targetHost)), {
       onStatusChange: setStatus,
       onLayout: (nextProfile, nextPageId, cacheProfile) => {
         cacheProfileRef.current = cacheProfile;
@@ -230,7 +231,7 @@ export function App() {
   const page = profile?.pages.find((p) => p.id === pageId) ?? profile?.pages[0];
 
   // Pairing always wins over a cached layout — a stale grid with no indication a PIN is needed would
-  // just look broken ("Çevrimdışı" forever) instead of telling the user what to do about it.
+  // just look broken ("Offline" forever) instead of telling the user what to do about it.
   if (!profile || !page || status === "pairing_required" || addingServer) {
     return (
       <ConnectScreen
@@ -515,15 +516,15 @@ function ProfileDrawer({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", padding: "4px 10px 12px" }}>
-          <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>Profiller</span>
+          <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>{t("drawer.profiles")}</span>
           <div style={{ flex: 1 }} />
           {autoSwitch?.enabled && (
             <button
               role="switch"
               aria-checked={autoSwitch.locked}
-              aria-label="Profil kilidi"
+              aria-label={t("drawer.lock")}
               onClick={onToggleAutoSwitchLock}
-              title={autoSwitch.locked ? "Otomatik geçiş kilitli — açmak için dokun" : "Otomatik geçiş açık — kilitlemek için dokun"}
+              title={autoSwitch.locked ? t("drawer.lock.on") : t("drawer.lock.off")}
               style={{
                 position: "relative", width: 48, height: 26, padding: 0, borderRadius: 999, border: "none", cursor: "pointer",
                 background: autoSwitch.locked ? "#ef4444" : "#3a3f45", transition: "background .15s ease",
@@ -558,7 +559,7 @@ function ProfileDrawer({
             {p.name}
           </button>
         ))}
-        <div style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", padding: "16px 10px 6px" }}>Sunucular</div>
+        <div style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", padding: "16px 10px 6px" }}>{t("drawer.servers")}</div>
         {servers.map((h) => (
           <div key={h} style={{ display: "flex", alignItems: "center" }}>
             <button
@@ -574,8 +575,8 @@ function ProfileDrawer({
             </button>
             {h !== activeHost && (
               <button
-                onClick={() => window.confirm(`${h} sunucusu listeden silinsin mi? (Eşleşme bilgisi de silinir)`) && onForgetServer(h)}
-                aria-label={`${h} sunucusunu sil`}
+                onClick={() => window.confirm(t("drawer.forget.confirm", h)) && onForgetServer(h)}
+                aria-label={t("drawer.forget.label", h)}
                 style={{ border: "none", background: "transparent", color: "#9aa0a8", fontSize: 18, padding: "6px 10px", cursor: "pointer" }}
               >
                 ×
@@ -590,7 +591,7 @@ function ProfileDrawer({
             cursor: "pointer", fontSize: 14, background: "transparent", color: "#60a5fa",
           }}
         >
-          + Sunucu ekle
+          {t("drawer.addServer")}
         </button>
         <SettingsButton onOpen={onOpenSettings} />
       </div>
@@ -732,7 +733,7 @@ function DrawerHandle({ onOpen }: { onOpen: () => void }) {
     // fall through to the grid underneath, which only reacts to a swipe, not a stationary tap. The bar
     // itself (the inner span) stays HANDLE_WIDTH_PX/HANDLE_HEIGHT_PX and flush with the screen edge.
     <button
-      aria-label="Profilleri göster"
+      aria-label={t("drawer.show")}
       onClick={onOpen}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -798,7 +799,7 @@ function ConnectScreen({
       {!pairing && (
         <>
           <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0 }}>
-            Bilgisayarındaki Macro Grid sunucusunun IP adresini gir (aynı Wi-Fi'da olmalısınız).
+            {t("connect.hint")}
           </p>
           <input
             value={host}
@@ -817,7 +818,7 @@ function ConnectScreen({
               background: "#3b82f6", color: "white", cursor: "pointer",
             }}
           >
-            Bağlan
+            {t("connect.button")}
           </button>
           <button
             onClick={onScanQr}
@@ -826,11 +827,11 @@ function ConnectScreen({
               background: "transparent", color: "#e6e7ea", cursor: "pointer",
             }}
           >
-            QR ile Tara
+            {t("connect.scanQr")}
           </button>
           {servers.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: 320, marginTop: 6 }}>
-              <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>Kayıtlı sunucular</span>
+              <span style={{ color: "#9aa0a8", fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>{t("connect.savedServers")}</span>
               {servers.map((h) => (
                 <button
                   key={h}
@@ -847,19 +848,18 @@ function ConnectScreen({
           )}
           {onCancel && (
             <button onClick={onCancel} style={{ border: "none", background: "transparent", color: "#9aa0a8", fontSize: 14, cursor: "pointer", padding: 8 }}>
-              Vazgeç
+              {t("connect.cancel")}
             </button>
           )}
-          {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>Bağlanıyor…</span>}
-          {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>Bağlantı koptu, yeniden deneniyor…</span>}
+          {status === "connecting" && <span style={{ color: "#9aa0a8", fontSize: 12 }}>{t("connect.connecting")}</span>}
+          {status === "disconnected" && host && <span style={{ color: "#ef4444", fontSize: 12 }}>{t("connect.retrying")}</span>}
         </>
       )}
 
       {pairing && (
         <>
           <p style={{ color: "#9aa0a8", fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 }}>
-            Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Grid düzenleyicisinde "Eşleştirme"ye tıkla ve orada
-            gösterilen 6 haneli PIN'i buraya gir.
+            {t("connect.pairHint")}
           </p>
           <input
             value={pin}
@@ -883,7 +883,7 @@ function ConnectScreen({
               cursor: pin.length === 6 ? "pointer" : "default",
             }}
           >
-            Eşleştir
+            {t("connect.pair")}
           </button>
         </>
       )}
@@ -916,7 +916,7 @@ function ActionErrorToast({ message }: { message: string }) {
 }
 
 function StatusBadge({ status, usingCache }: { status: ConnectionStatus; usingCache: boolean }) {
-  const label = status === "connecting" ? "Bağlanıyor…" : usingCache ? "Çevrimdışı · önbellek" : "Çevrimdışı";
+  const label = status === "connecting" ? t("badge.connecting") : usingCache ? t("badge.offlineCached") : t("badge.offline");
   return (
     <div
       style={{

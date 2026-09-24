@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BarcodeFormat, BarcodeScanner } from "@capacitor-mlkit/barcode-scanning";
+import { t } from "./i18n";
 
 export interface ScannedPairing {
   host: string;
@@ -58,7 +59,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
       try {
         const { supported } = await BarcodeScanner.isSupported();
         if (!supported) {
-          setError("Bu cihaz QR taramayı desteklemiyor.");
+          setError(t("qr.unsupported"));
           return;
         }
 
@@ -67,7 +68,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
           perm = await BarcodeScanner.requestPermissions();
         }
         if (perm.camera !== "granted" && perm.camera !== "limited") {
-          setError("Kamera izni verilmedi. Ayarlardan izin verip tekrar dene.");
+          setError(t("qr.permission"));
           return;
         }
         if (cancelled) return;
@@ -77,7 +78,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
           if (!raw) return;
           const parsed = parsePairingQr(raw);
           if (!parsed) {
-            setError("Bu QR kod bir Macro Grid eşleştirme kodu değil.");
+            setError(t("qr.notPairingCode"));
             return;
           }
           setPending(parsed);
@@ -88,7 +89,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
         scanStartedRef.current = true;
         await BarcodeScanner.startScan({ formats: [BarcodeFormat.QrCode] });
       } catch {
-        if (!cancelled) setError("Kamera başlatılamadı.");
+        if (!cancelled) setError(t("qr.cameraFailed"));
       }
     }
 
@@ -123,9 +124,9 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
       {!pending && !error && (
         <>
           <div style={frameStyle} />
-          <p style={hintTextStyle}>Sunucudaki QR kodunu kareye hizala</p>
+          <p style={hintTextStyle}>{t("qr.hint")}</p>
           <button onClick={onCancel} style={secondaryButtonStyle}>
-            Vazgeç
+            {t("qr.cancel")}
           </button>
         </>
       )}
@@ -134,7 +135,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
         <div style={cardStyle}>
           <p style={{ color: "#ef4444", fontSize: 14, margin: "0 0 16px" }}>{error}</p>
           <button onClick={onCancel} style={secondaryButtonStyle}>
-            Geri
+            {t("qr.back")}
           </button>
         </div>
       )}
@@ -142,16 +143,16 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
       {pending && (
         <div style={cardStyle}>
           <p style={{ color: "#e6e7ea", fontSize: 14, margin: "0 0 16px", lineHeight: 1.5 }}>
-            Bu sunucuya bağlanılsın mı?
+            {t("qr.confirm")}
             <br />
             <strong style={{ fontFamily: "ui-monospace, monospace", fontSize: 15 }}>{pending.host}</strong>
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             <button onClick={onCancel} style={secondaryButtonStyle}>
-              İptal
+              {t("qr.confirm.no")}
             </button>
             <button onClick={() => onScanned(pending)} style={primaryButtonStyle}>
-              Bağlan
+              {t("qr.confirm.yes")}
             </button>
           </div>
         </div>

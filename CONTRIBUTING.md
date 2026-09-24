@@ -3,6 +3,11 @@
 Thanks for your interest. Please read the [Code of Conduct](CODE_OF_CONDUCT.md). This repository is the Android phone and tablet app. The server and editor are in
 [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin); each has its own version and rules.
 
+## This is a hobby project
+
+Macro Grid is maintained in spare time. Issues and pull requests are welcome, but replies and reviews can take a while, and there is no
+promise that a request will be accepted or a pull request merged. Please be patient, and don't expect support on a schedule.
+
 ## Getting set up
 
 See [docs/development.md](docs/development.md) for the requirements, how to run the app in a browser and on a phone, and the pitfalls.

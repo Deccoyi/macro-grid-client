@@ -80,4 +80,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE). Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE).
+
+## Third-party licenses
+
+The app uses open-source libraries and a few proprietary Google services. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every component with its version, license and
+copyright holder, and the original license texts are in [licenses/](licenses/). Both are also packaged into the app build (they are copied next to the web assets). The app
+icons are AI-generated.

@@ -21,7 +21,6 @@ The same files are packaged into the app: the built web assets contain `THIRD_PA
 |---|---|---|---|---|---|
 | @capacitor/core | 8.5.2 | MIT | Drifty Co. | https://github.com/ionic-team/capacitor | [licenses/capacitor-core](licenses/capacitor-core/LICENSE) |
 | @capacitor/android | 8.5.2 | MIT | Drifty Co. | https://github.com/ionic-team/capacitor | [licenses/capacitor-android](licenses/capacitor-android/LICENSE) |
-| @capacitor/app | 8.1.1 | MIT | Ionic | https://github.com/ionic-team/capacitor-plugins | [licenses/capacitor-app](licenses/capacitor-app/LICENSE) |
 | @capacitor/screen-orientation | 8.0.1 | MIT | Ionic | https://github.com/ionic-team/capacitor-plugins | [licenses/capacitor-screen-orientation](licenses/capacitor-screen-orientation/LICENSE) |
 | @capacitor-community/keep-awake | 8.0.1 | MIT | The keep-awake developers | https://github.com/capacitor-community/keep-awake | [licenses/capacitor-community-keep-awake](licenses/capacitor-community-keep-awake/LICENSE) |
 | @capacitor-mlkit/barcode-scanning | 8.2.1 | Apache-2.0 | Robin Genz | https://github.com/capawesome-team/capacitor-mlkit | [licenses/capacitor-mlkit-barcode-scanning](licenses/capacitor-mlkit-barcode-scanning/LICENSE) |

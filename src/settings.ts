@@ -1,6 +1,7 @@
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { Capacitor } from "@capacitor/core";
 import { setImmersive } from "./kiosk";
+import { readJson, writeJson } from "./storage/storage";
 
 export type OrientationSetting = "auto" | "portrait" | "landscape";
 
@@ -13,21 +14,13 @@ const KEY = "macro-grid.settings";
 const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto" };
 
 export function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppSettings>) };
-  } catch {
-    return DEFAULTS;
-  }
+  const stored = readJson<Partial<AppSettings> | null>(KEY, null);
+  return stored ? { ...DEFAULTS, ...stored } : DEFAULTS;
 }
 
 export function saveSettings(settings: AppSettings): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(settings));
-  } catch {
-    // Best-effort; the toggle just resets to its default next launch.
-  }
+  // Best-effort; the toggle just resets to its default next launch if this fails.
+  writeJson(KEY, settings);
   applySettings(settings);
 }
 

@@ -3,6 +3,8 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+
+## 0.1.1 - 2026-09-24
 ### New
 - **Language:** The app now opens in Turkish when your phone's language is Turkish, and in English otherwise.
 - **Licenses:** The list of open-source components and their licenses is now included with the app.

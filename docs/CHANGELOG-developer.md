@@ -23,6 +23,10 @@ This repo is the **client** (phone/tablet) side of Macro Station and is versione
 - Profile drawer: opens with a swipe from the left edge (or an always-visible thin edge handle), lists all profiles through the `profiles.list` message from the server, and sends `profile.change` on selection to switch to the new profile immediately. Verified end to end against a real server.
 - Keep the screen awake (`@capacitor-community/keep-awake`): the device does not sleep while a profile is loaded.
 
+### Changed
+- The version sent in `hello` is read from `package.json` instead of a duplicated constant. `@testing-library/dom` was added to the renderer's dev dependencies so its tests run on a fresh install.
+- Documentation rewritten in English for publishing: README, `docs/architecture.md`, `docs/development.md`, `docs/versioning.md`; `CONTRIBUTING.md`, `SECURITY.md` and updated third-party notices added; the copied plan, agent notes and editor design documents were removed.
+
 ### Fixed
 - **The camera preview stayed black in the QR scanner:** while scanning, the `html`/`body`/`#root` backgrounds are now made transparent, not just `body` (`QrScan.tsx`, `index.css`).
 - The connection state could wrongly show "connection lost" under React 18 StrictMode: because the effect intentionally runs twice in development, the delayed `onclose` of the old (cancelled) `ServerConnection` could write "disconnected" to the state after the new connection was already open. `disconnect()` now permanently marks the connection "destroyed", and no event callback fires after that point.

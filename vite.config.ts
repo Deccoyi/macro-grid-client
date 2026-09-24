@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: {
     // @macro/renderer is linked via "file:" (npm symlink). Without this, module resolution can find a
     // SECOND react/react-dom inside the renderer package's own node_modules instead of this app's copy —
-    // same double-React trap documented for the editor in docs/agent-notes.md (Stage 3).
+    // same double-React trap as in the server repository's editor.
     dedupe: ["react", "react-dom"],
   },
   server: {

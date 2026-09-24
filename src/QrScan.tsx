@@ -20,7 +20,7 @@ function parsePairingQr(raw: string): ScannedPairing | null {
       const ip = url.searchParams.get("host");
       if (!ip) return null;
       // The editor encodes host and port as separate query params (confirmed from a real scanned
-      // code: macrostation://pair?host=192.168.1.116&port=9820&pin=...) rather than "ip:port" in a
+      // code: macrostation://pair?host=192.168.1.20&port=9820&pin=...) rather than "ip:port" in a
       // single host param — ServerConnection needs them combined into one "ip:port" string.
       const port = url.searchParams.get("port");
       const host = port ? `${ip}:${port}` : ip;

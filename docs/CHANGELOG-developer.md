@@ -5,6 +5,8 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+
+## [0.1.1] - 2026-09-24
 ### Added
 - **Phone language:** `src/i18n/` holds `tr.ts` (defines `DictKey`) and `en.ts`; `t(key, ...args)` picks the dictionary once at start-up from `navigator.languages[0]` (Turkish when it starts with `tr`, English otherwise). `App.tsx`, `QrScan.tsx` and `SettingsPanel.tsx` no longer hard-code texts; the default device name sent in `hello` is translated too. Error texts that arrive from the server are English.
 - **Third-party license compliance:** `THIRD_PARTY_NOTICES.md` is now a full index (name, version, SPDX license, copyright holder, URL, path) of the production npm packages and the resolved Android release runtime classpath, and `licenses/<library>/` holds the original license texts (Android library families share one canonical Apache-2.0 text). ML Kit and Google Play services are linked to their proprietary terms instead of copied. A small Vite plugin in `vite.config.ts` copies the notices and `licenses/` into `dist/`, so they are packaged into the APK with the web assets. No in-app screen yet: the settings UI has no i18n files (its strings are hard-coded), so a link there is left as a follow-up.

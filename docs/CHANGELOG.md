@@ -4,6 +4,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 ### New
+- **Language:** The app now opens in Turkish when your phone's language is Turkish, and in English otherwise.
 - **Licenses:** The list of open-source components and their licenses is now included with the app.
 - **Profile lock:** The profile drawer has a switch with a lock icon. While it is on, your computer will not change the profile by itself.
 - **Saved servers:** The app remembers the servers you connected to. Switch, delete or add one from the drawer.

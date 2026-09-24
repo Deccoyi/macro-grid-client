@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { t } from "./i18n";
 import type { AppSettings, OrientationSetting } from "./settings";
 
 /** The gear button at the bottom of the profile drawer — settings are deliberately tucked in there
@@ -14,7 +15,7 @@ export function SettingsButton({ onOpen }: { onOpen: () => void }) {
         background: "transparent", color: "#9aa0a8", marginTop: "auto",
       }}
     >
-      <GearIcon /> Ayarlar
+      <GearIcon /> {t("settings.title")}
     </button>
   );
 }
@@ -48,18 +49,18 @@ export function SettingsPanel({
           boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 16,
         }}
       >
-        <div style={{ color: "#e6e7ea", fontSize: 15, fontWeight: 600 }}>Ayarlar</div>
+        <div style={{ color: "#e6e7ea", fontSize: 15, fontWeight: 600 }}>{t("settings.title")}</div>
 
         <label style={rowStyle}>
           <div>
-            <div style={labelStyle}>Kiosk modu</div>
-            <div style={hintStyle}>Durum çubuğunu ve gezinme çubuğunu gizler, tam ekran gösterir.</div>
+            <div style={labelStyle}>{t("settings.kiosk")}</div>
+            <div style={hintStyle}>{t("settings.kiosk.hint")}</div>
           </div>
           <Switch checked={settings.kiosk} onChange={(kiosk) => onChange({ ...settings, kiosk })} />
         </label>
 
         <div>
-          <div style={labelStyle}>Ekran yönü</div>
+          <div style={labelStyle}>{t("settings.orientation")}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
             {(["auto", "portrait", "landscape"] as OrientationSetting[]).map((o) => (
               <button
@@ -72,15 +73,14 @@ export function SettingsPanel({
                   color: settings.orientation === o ? "#60a5fa" : "#e6e7ea",
                 }}
               >
-                {o === "auto" ? "Otomatik" : o === "portrait" ? "Dikey" : "Yatay"}
+                {o === "auto" ? t("settings.orientation.auto") : o === "portrait" ? t("settings.orientation.portrait") : t("settings.orientation.landscape")}
               </button>
             ))}
           </div>
         </div>
 
         <div style={{ ...hintStyle, maxWidth: "none", lineHeight: 1.45, borderTop: "1px solid #2d3136", paddingTop: 12 }}>
-          Macro Grid yapay zekâ ile üretilmiş, alfa aşamasında bir yazılımdır ve "olduğu gibi", hiçbir garanti verilmeden sunulur.
-          Yazarlar hiçbir sorumluluk kabul etmez; kullanımın tüm riski size aittir.
+          {t("settings.disclaimer")}
         </div>
 
         <button
@@ -90,7 +90,7 @@ export function SettingsPanel({
             background: "transparent", color: "#e6e7ea", cursor: "pointer", marginTop: 4,
           }}
         >
-          Kapat
+          {t("settings.close")}
         </button>
       </div>
     </>

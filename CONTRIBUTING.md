@@ -1,5 +1,10 @@
 # Contributing to the Macro Grid client
 
+> **AI-generated software.** All code, design and documentation of this project, including this file, were created by artificial
+> intelligence at the maintainer's direction. It is alpha-stage, has not been reviewed line by line by a human or security-audited, and is
+> provided "as is", without warranty of any kind. You use it entirely at your own risk (see the [README](README.md) and the
+> [MIT license](LICENSE)).
+
 Thanks for your interest. Please read the [Code of Conduct](CODE_OF_CONDUCT.md). This repository is the Android phone and tablet app. The server and editor are in
 [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin); each has its own version and rules.
 

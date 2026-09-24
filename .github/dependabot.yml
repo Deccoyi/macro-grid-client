@@ -7,9 +7,8 @@ updates:
       interval: monthly
     open-pull-requests-limit: 2
     groups:
-      all-updates:
+      deps:
         patterns: ["*"]
-    open-pull-requests-limit: 5
     target-branch: dev
   - package-ecosystem: npm
     directory: "/packages/renderer"
@@ -17,9 +16,8 @@ updates:
       interval: monthly
     open-pull-requests-limit: 2
     groups:
-      all-updates:
+      deps:
         patterns: ["*"]
-    open-pull-requests-limit: 5
     target-branch: dev
   - package-ecosystem: gradle
     directory: "/android"
@@ -27,9 +25,8 @@ updates:
       interval: monthly
     open-pull-requests-limit: 2
     groups:
-      all-updates:
+      deps:
         patterns: ["*"]
-    open-pull-requests-limit: 5
     target-branch: dev
   - package-ecosystem: github-actions
     directory: "/"
@@ -37,6 +34,6 @@ updates:
       interval: monthly
     open-pull-requests-limit: 2
     groups:
-      all-updates:
+      deps:
         patterns: ["*"]
     target-branch: dev

@@ -8,13 +8,16 @@ The phone and tablet app for [Macro Grid](https://github.com/Deccoyi/macro-grid)
 on your Windows PC and shows the grid you designed in the server's editor as a full-screen touch deck: buttons, toggles, sliders and knobs that press keys and run
 actions on the PC, with live values coming back. It is an Android app built with Capacitor, React and TypeScript.
 
-> ## This project was written entirely by an AI assistant
+> ## AI-generated software: you use it entirely at your own risk
 >
-> All code, design and documentation in this repository were written by an AI assistant (Claude) at a user's direction. It has not been reviewed line by line by a
-> human, security-audited or certified for production use.
+> All code, design, documentation and artwork of this project were created by artificial intelligence (an AI assistant working at the
+> maintainer's direction). Nothing has been reviewed line by line by a human, security-audited or certified for any purpose.
 >
-> **No warranty of any kind.** The software is provided "as is", without warranty of any kind, express or implied, including but not limited to
-> merchantability, fitness for a particular purpose and non-infringement. You use it entirely at your own risk. See [LICENSE](LICENSE) (MIT).
+> **No warranty, no liability.** The software is provided "as is", without warranty of any kind, express or implied. To the fullest
+> extent permitted by law, the authors and contributors accept no responsibility or liability of any kind for it, including for damage,
+> data loss, misuse, security problems or any other consequence of installing or using it. All risk is yours: which software you
+> install, which devices you pair, which plugins you run and which buttons you press. The installer and the app ask you to accept the
+> [user agreement](https://github.com/Deccoyi/macro-grid/blob/main/installer/license-agreement.txt). See also [LICENSE](LICENSE) (MIT).
 
 The server and editor are in [macro-grid](https://github.com/Deccoyi/macro-grid) and the plugins in [macro-grid-plugin](https://github.com/Deccoyi/macro-grid-plugin).
 The three are versioned independently. This app needs a Macro Grid server on the same network; without one it only shows its connect screen.

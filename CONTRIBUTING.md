@@ -44,7 +44,7 @@ To try the app on a phone, build the web bundle, run `npx cap sync android`, the
 
 ## Security
 
-Please do not report security problems in a public issue; see [SECURITY.md](SECURITY.md). Other questions: macrogrid.app@gmail.com.
+Please do not report security problems in a public issue; see [SECURITY.md](SECURITY.md). For other questions, open an issue.
 
 ## License
 

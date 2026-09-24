@@ -78,6 +78,11 @@ export function SettingsPanel({
           </div>
         </div>
 
+        <div style={{ ...hintStyle, maxWidth: "none", lineHeight: 1.45, borderTop: "1px solid #2d3136", paddingTop: 12 }}>
+          Macro Grid yapay zekâ ile üretilmiş, alfa aşamasında bir yazılımdır ve "olduğu gibi", hiçbir garanti verilmeden sunulur.
+          Yazarlar hiçbir sorumluluk kabul etmez; kullanımın tüm riski size aittir.
+        </div>
+
         <button
           onClick={onClose}
           style={{

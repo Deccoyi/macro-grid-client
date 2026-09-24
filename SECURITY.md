@@ -9,15 +9,14 @@ Macro Grid is designed for a home or office network you trust. It is **not harde
 - **LAN-only model.** The security model assumes that everyone on the network is at least somewhat trusted. Pairing (a six-digit PIN, then a token) keeps out casual connections; it is not
   a defense against an attacker on the same network. The whole system is described in the server repository's `docs/architecture.md`, and this app's part in
   [docs/architecture.md](docs/architecture.md#security).
-- **No warranty.** The software is provided "as is" under the [MIT license](LICENSE), without warranty of any kind. It was written by an AI assistant and has not been independently
-  audited (see the [README](README.md)).
+- **No warranty, no liability.** This software was created entirely by AI tools, is alpha-stage and has not been independently audited or security-reviewed (see the [README](README.md)). It is provided "as is", without warranty of any kind, and the authors and contributors accept no responsibility or liability for it, including for security problems and their consequences (see the [MIT license](LICENSE)). You use it entirely at your own risk. Security reports are welcome, but they create no obligation to fix and are not a promise of support or of a response time.
 
 ## Reporting a vulnerability
 
 Please report security problems privately, not in a public issue. Use GitHub's private vulnerability reporting: open the **Security** tab of this repository, then
 **Report a vulnerability**.
 
-For anything else about the project, write to macrogrid.app@gmail.com. Please do not send vulnerability details there; use the private reporting above.
+For anything else about the project, open a normal issue. Please do not put vulnerability details in a public issue; use the private reporting above.
 
 Helpful details: what is affected, the steps to reproduce, and what an attacker on the same network could do. A problem in the server or a plugin belongs in
 the [server](https://github.com/Deccoyi/macro-grid) or [plugin](https://github.com/Deccoyi/macro-grid-plugin) repository.

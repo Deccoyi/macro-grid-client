@@ -42,11 +42,11 @@ function touch(hash: string): void {
   list.push(hash);
 }
 
-export function hasAsset(hash: string): boolean {
+function hasAsset(hash: string): boolean {
   return getAsset(hash) !== undefined;
 }
 
-export function getAsset(hash: string): string | undefined {
+function getAsset(hash: string): string | undefined {
   const cached = memory.get(hash);
   if (cached !== undefined) return cached;
   try {

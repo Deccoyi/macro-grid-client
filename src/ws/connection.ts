@@ -288,7 +288,7 @@ export class ServerConnection {
   }
 
   /** Pauses/resumes this device's auto-profile-switch (the drawer's lock) — a no-op server-side if this
-   * device doesn't have "Aktif pencereyi takip et" on. */
+   * device doesn't have "Follow the active window" on. */
   setProfileLock(locked: boolean): void {
     this.send("profile.lock", { locked });
   }

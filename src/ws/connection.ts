@@ -1,6 +1,7 @@
 import type { Profile, WidgetState } from "@macro/renderer";
 import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
+import { version as CLIENT_VERSION } from "../../package.json";
 
 /**
  * Every frame is { type, data }, matching MacroStation.Protocol.Envelope server-side. This client
@@ -80,7 +81,6 @@ export interface ConnectionEvents {
   onActionError: (message: string) => void;
 }
 
-const CLIENT_VERSION = "0.1.0";
 const MAX_BACKOFF_MS = 10_000;
 /** Optional protocol features this client understands — see ClientCapabilities.cs server-side. */
 const CAPABILITIES = ["assets", "layout.patch"];

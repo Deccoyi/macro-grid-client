@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { t } from "./i18n";
-import type { AppSettings, OrientationSetting } from "./settings";
+import type { AppSettings, OrientationSetting } from "./storage/settings";
 
 /** The gear button at the bottom of the profile drawer — settings are deliberately tucked in there
  * rather than getting their own always-visible entry point, since kiosk mode/orientation lock are a

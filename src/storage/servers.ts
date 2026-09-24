@@ -1,4 +1,4 @@
-import { readJson, removeItem, writeJson } from "./storage/storage";
+import { readJson, removeItem, writeJson } from "./storage";
 
 const SERVERS_KEY = "macro-grid.servers";
 

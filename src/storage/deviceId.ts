@@ -1,4 +1,4 @@
-import { readText, writeText } from "./storage/storage";
+import { readText, writeText } from "./storage";
 
 const KEY = "macro-grid.deviceId";
 

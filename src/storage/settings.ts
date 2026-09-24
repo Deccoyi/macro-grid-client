@@ -1,7 +1,6 @@
-import { ScreenOrientation } from "@capacitor/screen-orientation";
-import { Capacitor } from "@capacitor/core";
-import { setImmersive } from "./kiosk";
-import { readJson, writeJson } from "./storage/storage";
+import { setImmersive } from "../native/kiosk";
+import { setOrientation } from "../native/orientation";
+import { readJson, writeJson } from "./storage";
 
 export type OrientationSetting = "auto" | "portrait" | "landscape";
 
@@ -29,11 +28,5 @@ export function saveSettings(settings: AppSettings): void {
  * cold start on its own). No-ops on web/iOS beyond what each underlying plugin itself no-ops. */
 export function applySettings(settings: AppSettings): void {
   setImmersive(settings.kiosk);
-
-  if (!Capacitor.isNativePlatform()) return;
-  if (settings.orientation === "auto") {
-    ScreenOrientation.unlock().catch(() => {});
-  } else {
-    ScreenOrientation.lock({ orientation: settings.orientation }).catch(() => {});
-  }
+  setOrientation(settings.orientation);
 }

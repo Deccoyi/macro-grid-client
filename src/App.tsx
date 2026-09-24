@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
-import { getDeviceId } from "./deviceId";
+import { getDeviceId } from "./storage/deviceId";
 import { t } from "./i18n";
-import { clearGestureExclusionZone, setGestureExclusionZone } from "./gestureExclusion";
+import { clearGestureExclusionZone, setGestureExclusionZone } from "./native/gestureExclusion";
 import { QrScanScreen, type ScannedPairing } from "./QrScan";
 import { SettingsButton, SettingsPanel } from "./SettingsPanel";
-import { forgetServer, loadServers, rememberServer } from "./servers";
-import { applySettings, loadSettings, saveSettings, type AppSettings } from "./settings";
+import { forgetServer, loadServers, rememberServer } from "./storage/servers";
+import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { AutoSwitchInfo, ConnectionStatus, ProfileSummary, ServerConnection } from "./ws/connection";
 import { resolveAssetRefs } from "./ws/assets";
 

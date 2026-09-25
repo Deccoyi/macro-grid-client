@@ -3,10 +3,18 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+
+## 0.2.0 - 2026-09-25
+### New
+- **Updates:** The app tells you when a new version is available, shows what changed, and installs it after one tap. Your pairing is kept. You can turn the check off in Settings.
+- **Settings page:** Settings are now a full page. New: choose whether updates download over Wi-Fi only (the default) or also over mobile data.
+- **Language:** Choose Turkish or English in Settings, or let the app follow the phone's language.
+
 ### Fixed
 - **Two-finger swipe:** A two-finger swipe no longer presses a button, moves a slider or turns a knob that one of the fingers touched first.
 
 ### Changed
+- **Signed releases:** New versions are signed with the project's own key. If you have version 0.1.1 on your phone, uninstall it once before installing this version; your pairing and saved servers are removed with it. Version 0.1.0 can be updated directly.
 - **Page switching:** Change page with a two-finger swipe left or right, anywhere on the screen. A single finger no longer changes page, so dragging a slider or knob cannot flip the page.
 
 ## 0.1.1 - 2026-09-24

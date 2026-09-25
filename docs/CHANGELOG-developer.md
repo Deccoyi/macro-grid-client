@@ -5,6 +5,8 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-09-25
 ### Fixed
 - **Two-finger swipe over widgets (renderer):** `interaction/multiTouch.ts` counts the fingers on the screen (window capture listeners). A touch press waits `PRESS_CONFIRM_MS` (45 ms) and is dropped when a second finger lands in that window or was already down (a quick tap still fires on release; mouse and pen fire at once). A slider or knob drag that a second finger joins sends no value and puts the old value back. Unit tests: `test/multiTouch.test.tsx`.
 
@@ -17,6 +19,10 @@ This repo is the **client** (phone/tablet) side of Macro Grid and is versioned i
 
 ### Added
 - `docs/engineering-guidelines.md` and `docs/proposals/`.
+
+### Maintainer notes
+- **Release APKs are signed on the maintainer's PC and uploaded to the draft release by hand** (the key never goes to GitHub); `release.yml` no longer attaches an APK. The steps, checks and the release certificate fingerprint are in `docs/release.md`. Client versions must be a plain `X.Y.Z`.
+- **Version 0.1.1 users must uninstall the app once** before installing a release-signed build: 0.1.1 was published as a CI debug build with a different key.
 
 ## [0.1.1] - 2026-09-24
 ### Added

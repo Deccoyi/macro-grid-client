@@ -14,6 +14,7 @@ import { t } from "../i18n";
 import { clearGestureExclusionZone, setGestureExclusionZone } from "../native/gestureExclusion";
 import { HANDLE_Y_KEY } from "../storage/keys";
 import { readText, writeText } from "../storage/storage";
+import { colors } from "../theme";
 
 // The button's real hit area is deliberately wider/taller than the visible bar (matches the native
 // gesture-exclusion rect) — a tap landing near the edge but just outside the thin bar used to fall
@@ -44,6 +45,18 @@ const barStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+};
+
+/** Marks the handle while an update is waiting, so the person knows to open the drawer. */
+const dotStyle: CSSProperties = {
+  position: "absolute",
+  right: HANDLE_WIDTH_PX + 6,
+  top: `calc(50% - ${HANDLE_HEIGHT_PX / 2 + 8}px)`,
+  width: 10,
+  height: 10,
+  borderRadius: "50%",
+  background: colors.accent,
+  boxShadow: "0 0 0 2px rgba(0,0,0,.5)",
 };
 
 const clampHandleFraction = (n: number) => Math.min(HANDLE_FRACTION_MAX, Math.max(HANDLE_FRACTION_MIN, n));
@@ -78,7 +91,7 @@ interface DragState {
  * touch — without that, a touch landing in the OS's back-gesture strip here can be intercepted before
  * this component ever sees it, on Android 10+ at least.
  */
-export function DrawerHandle({ onOpen }: { onOpen: () => void }) {
+export function DrawerHandle({ onOpen, showDot = false }: { onOpen: () => void; showDot?: boolean }) {
   const [topFraction, setTopFraction] = useState(loadHandleFraction);
   const topFractionRef = useRef(topFraction);
   useEffect(() => {
@@ -180,6 +193,7 @@ export function DrawerHandle({ onOpen }: { onOpen: () => void }) {
       onTouchCancel={endTouch}
       style={buttonStyle(topFraction)}
     >
+      {showDot && <span aria-hidden="true" style={dotStyle} />}
       <span aria-hidden="true" style={barStyle}>
         <svg width="7" height="13" viewBox="0 0 7 13" fill="none" aria-hidden="true">
           <path d="M6 1L1 6.5L6 12" stroke="rgba(255,255,255,.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

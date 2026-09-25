@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { t } from "../i18n";
 import { colors, monoFont, sectionLabelStyle, selectedTint } from "../theme";
 import type { AutoSwitchInfo, ProfileSummary } from "../ws/connection";
-import { SettingsButton } from "./SettingsPanel";
+import { SettingsButton } from "./SettingsScreen";
 
 const LOCK_ON_COLOR = colors.danger;
 
@@ -60,6 +60,19 @@ const serverRowStyle = (selected: boolean): CSSProperties => ({
   background: selected ? selectedTint : "transparent",
   color: selected ? colors.accentText : colors.text,
 });
+const updateRowStyle: CSSProperties = {
+  ...rowBase,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  padding: "12px 10px",
+  fontSize: 14,
+  marginBottom: 4,
+  background: selectedTint,
+  color: colors.accentText,
+};
+const updateDotStyle: CSSProperties = { width: 8, height: 8, borderRadius: "50%", background: colors.accent, flexShrink: 0 };
 const forgetStyle: CSSProperties = { border: "none", background: "transparent", color: colors.textMuted, fontSize: 18, padding: "6px 10px", cursor: "pointer" };
 const addServerStyle: CSSProperties = {
   ...rowBase,
@@ -131,6 +144,9 @@ interface ProfileDrawerProps {
   onClose: () => void;
   onPick: (id: string) => void;
   onOpenSettings: () => void;
+  /** The newer version, or null. */
+  updateVersion: string | null;
+  onOpenUpdate: () => void;
 }
 
 /** Slide-in panel with the profile list, saved servers and the settings entry. */
@@ -148,11 +164,19 @@ export function ProfileDrawer({
   onClose,
   onPick,
   onOpenSettings,
+  updateVersion,
+  onOpenUpdate,
 }: ProfileDrawerProps) {
   return (
     <>
       <div onClick={onClose} style={backdropStyle(open)} />
       <div style={panelStyle(open)}>
+        {updateVersion && (
+          <button onClick={onOpenUpdate} aria-label={t("drawer.update.label")} style={updateRowStyle}>
+            <span aria-hidden="true" style={updateDotStyle} />
+            {t("drawer.update", updateVersion)}
+          </button>
+        )}
         <div style={headerStyle}>
           <span style={sectionLabelStyle}>{t("drawer.profiles")}</span>
           <div style={spacerStyle} />

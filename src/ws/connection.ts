@@ -1,7 +1,8 @@
 import type { Profile, WidgetState } from "@macro/renderer";
 import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
-import { version as CLIENT_VERSION } from "../../package.json";
+import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
+import { checkServerVersion, type ServerCompat } from "./serverCompat";
 
 /**
  * Every frame is { type, data }, matching MacroGrid.Protocol.Envelope server-side. This client
@@ -79,6 +80,9 @@ export interface ConnectionEvents {
   /** A widget's action failed server-side (e.g. a button pointed at a since-deleted OBS scene) —
    * surfaced as a toast so a stale binding is never a silent no-op on the device that pressed it. */
   onActionError: (message: string) => void;
+  /** The server said hello: how its version relates to the Macro Grid version this app needs (`macroGrid` in package.json),
+   * so the caller can tell the person to update the computer or the app. Called on every welcome, `ok` included. Optional. */
+  onServerVersion?: (compat: ServerCompat, serverVersion: string, required: string) => void;
 }
 
 const MAX_BACKOFF_MS = 10_000;
@@ -205,6 +209,7 @@ export class ServerConnection {
         // after a "pairing_required" error, which otherwise leaves the status stuck on that value
         // forever even though the connection is now fully working.
         this.events.onStatusChange("connected");
+        this.events.onServerVersion?.(checkServerVersion(data.serverVersion, REQUIRED_MACRO_GRID), data.serverVersion, REQUIRED_MACRO_GRID);
         break;
       }
       case "layout.full": {

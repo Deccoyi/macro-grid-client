@@ -3,6 +3,8 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+### New
+- **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
 
 ## 0.2.0 - 2026-09-25
 ### New

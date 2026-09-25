@@ -49,6 +49,23 @@ beforeEach(() => vi.stubGlobal("WebSocket", FakeSocket));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ServerConnection", () => {
+  it("reports how the server version fits what the app needs", async () => {
+    const { events, socket } = setup();
+    const onServerVersion = vi.fn();
+    (events as ConnectionEvents).onServerVersion = onServerVersion;
+
+    socket.receive("welcome", { serverName: "s", serverVersion: "0.3.2" });
+    socket.receive("welcome", { serverName: "s", serverVersion: "1.0.0" });
+    socket.receive("welcome", { serverName: "s", serverVersion: "2.0.0" });
+    await flush();
+
+    expect(onServerVersion.mock.calls.map((c) => [c[0], c[1]])).toEqual([
+      ["server-too-old", "0.3.2"],
+      ["ok", "1.0.0"],
+      ["app-too-old", "2.0.0"],
+    ]);
+  });
+
   it("connects to /ws and sends hello with the stored token", () => {
     const { events, socket } = setup();
     expect(socket.url).toBe("ws://10.0.0.2:9820/ws");

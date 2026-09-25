@@ -103,6 +103,8 @@ export const tr = {
   "update.error.incompatible": "Bu sürüm kurulu uygulamanın üstüne kurulamadı. Sürüm sayfasındaki dosyayı elle kurmayı dene.",
   "update.error.failed": "Güncelleme kurulamadı.",
   "update.updated": (v: string) => `Macro Grid ${v} sürümüne güncellendi.`,
+  "version.serverTooOld": (server: string, required: string) => `Bu uygulama bilgisayarda Macro Grid ${required} veya daha yenisini gerektiriyor, bilgisayarda ${server} var. Bilgisayardaki Macro Grid'i güncelleyin.`,
+  "version.appTooOld": (server: string) => `Bilgisayardaki Macro Grid ${server}, bu uygulamanın desteklediğinden daha yeni. Uygulamayı güncelleyin.`,
 
   "settings.close": "Kapat",
 } satisfies Record<string, string | ((...args: string[]) => string)>;

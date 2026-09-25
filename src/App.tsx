@@ -68,6 +68,17 @@ export function App() {
       {screen}
       <UpdateScreen update={update} />
       {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
+      {conn.versionNotice && (
+        <InfoToast
+          message={
+            conn.versionNotice.compat === "server-too-old"
+              ? t("version.serverTooOld", conn.versionNotice.serverVersion, conn.versionNotice.required)
+              : t("version.appTooOld", conn.versionNotice.serverVersion)
+          }
+          onDone={conn.dismissVersionNotice}
+          durationMs={12_000}
+        />
+      )}
     </>
   );
 

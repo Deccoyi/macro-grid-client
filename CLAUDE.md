@@ -12,6 +12,11 @@
 - `CHANGELOG-developer.md` records only: changes to the WebSocket protocol or the capabilities the app announces to the server, breaking or incompatible changes, migrations, and anything a plugin author, integrator or maintainer has to do differently. Everything else (how a feature was built, refactors, internal details, small fixes) goes in the commit message and the pull request description, not in this file. Entries already there stay as they are.
 - When a change is finished, update `CHANGELOG.md` under `[Unreleased]`, and `CHANGELOG-developer.md` only if the change is one of the kinds above. See `docs/versioning.md` and the `commit-all` skill.
 
+## Versions, releases and signing
+- Any version, release, tag or signing work: read the central guide first, `docs/guides/release.md` in the server repository (`macro-grid`, https://github.com/Deccoyi/macro-grid/blob/main/docs/guides/release.md). It has the tag table, the order of a release and the signing keys. `docs/release.md` here only has the APK-specific steps; do not copy the shared content into it.
+- The app's own version is `version` in `package.json`; the Macro Grid it needs is `macroGrid` there. Signing keys never go into the repository or into chat.
+- Tags and APK releases are outward-facing: ask the owner before each one.
+
 ## Commits
 - Conventional Commits (`type(scope): description`), always in English.
 

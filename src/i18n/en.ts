@@ -105,6 +105,8 @@ export const en: Record<DictKey, string | ((...args: string[]) => string)> = {
   "update.error.incompatible": "This version could not be installed over the installed app. Try installing the file from the release page by hand.",
   "update.error.failed": "The update could not be installed.",
   "update.updated": (v: string) => `Macro Grid was updated to ${v}.`,
+  "version.serverTooOld": (server: string, required: string) => `This app needs Macro Grid ${required} or newer on your computer, and it has ${server}. Update Macro Grid on the computer.`,
+  "version.appTooOld": (server: string) => `Macro Grid ${server} on your computer is newer than this app supports. Update the app.`,
 
   "settings.close": "Close",
 };

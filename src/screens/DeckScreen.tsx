@@ -91,7 +91,7 @@ export function DeckScreen({
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
-    <div style={deckStyle} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
+    <div style={deckStyle} onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}>
       {status !== "connected" && <StatusBadge status={status} usingCache={usingCache} />}
       {actionError && <ActionErrorToast message={actionError} />}
 

@@ -4,10 +4,11 @@ export const EDGE_SWIPE_ZONE_PX = 56;
 export const SWIPE_OPEN_THRESHOLD_PX = 60;
 /** A swipe longer than this vertically is a scroll-like drag, not a horizontal swipe. */
 export const SWIPE_MAX_VERTICAL_PX = 40;
-/** A swipe across most of the screen width reads as "change page" rather than a stray drag — well past
- * anything a slider/knob drag (bounded to that one widget's cell) would ever cover, so the two gestures
- * don't fight once widgets grow their own drag handling. */
+/** A two-finger swipe (midpoint of the fingers) this far horizontally changes page. A single finger never
+ * changes page, so dragging a slider or knob cannot flip it. */
 export const PAGE_SWIPE_THRESHOLD_PX = 90;
+/** Two fingers drift more than one, so the vertical tolerance of a page swipe is wider. */
+export const TWO_FINGER_MAX_VERTICAL_PX = 80;
 
 export const HANDLE_WIDTH_PX = 18;
 export const HANDLE_HEIGHT_PX = 64;

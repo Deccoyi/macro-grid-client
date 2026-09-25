@@ -3,6 +3,9 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+### Fixed
+- **Two-finger swipe:** A two-finger swipe no longer presses a button, moves a slider or turns a knob that one of the fingers touched first.
+
 ### Changed
 - **Page switching:** Change page with a two-finger swipe left or right, anywhere on the screen. A single finger no longer changes page, so dragging a slider or knob cannot flip the page.
 

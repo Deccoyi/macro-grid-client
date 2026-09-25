@@ -12,12 +12,14 @@ const T = {
     openPage: 'Open the release page', notes: 'Release notes', download: 'Download', onGithub: 'Releases are on GitHub',
     failed: 'The release list could not be loaded right now, or no release has been published yet. You can always get the APK from GitHub.',
     goGithub: 'Go to GitHub Releases', previous: 'Previous versions',
+    scan: 'Scan with your phone to download the APK', qrAlt: 'QR code of the APK download link',
   },
   tr: {
     alpha: 'alfa', latest: 'Son sürüm', version: 'Sürüm', released: 'Yayın tarihi:', apk: 'APK indir',
     openPage: 'Sürüm sayfasını aç', notes: 'Sürüm notları', download: 'İndir', onGithub: "Sürümler GitHub'da",
     failed: "Sürüm listesi şu anda yüklenemedi ya da henüz bir sürüm yayımlanmadı. APK'yı her zaman GitHub'dan edinebilirsiniz.",
     goGithub: "GitHub Sürümleri'ne git", previous: 'Önceki sürümler',
+    scan: "APK'yı indirmek için telefonunuzla tarayın", qrAlt: 'APK indirme bağlantısının QR kodu',
   },
 }
 const t = computed(() => T[isTr.value ? 'tr' : 'en'])
@@ -42,6 +44,8 @@ function formatSize(bytes: number): string {
 <template>
   <div class="dl">
     <section v-if="latest" class="hero">
+     <div class="hero-row">
+      <div class="hero-main">
       <div class="label">{{ t.latest }}</div>
       <h2 class="ver">
         {{ t.version }} {{ latest.version }}
@@ -54,6 +58,12 @@ function formatSize(bytes: number): string {
         <a class="btn alt" :href="latest.notesUrl">{{ t.notes }}</a>
       </div>
       <div v-if="latest.apk" class="file">{{ latest.apk.name }} &middot; {{ formatSize(latest.apk.size) }}</div>
+      </div>
+      <figure v-if="latest.apk?.qr" class="qr">
+        <img :src="latest.apk.qr" :alt="t.qrAlt" width="148" height="148" />
+        <figcaption>{{ t.scan }}</figcaption>
+      </figure>
+     </div>
     </section>
 
     <section v-else class="hero">
@@ -95,6 +105,12 @@ function formatSize(bytes: number): string {
   border-radius: 12px;
   padding: 24px;
 }
+.hero-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.hero-main { min-width: 0; flex: 1 1 auto; }
+/* White behind the code whatever the theme: a scanner needs dark modules on a light ground. */
+.qr { margin: 0; flex: 0 0 auto; text-align: center; }
+.qr img { display: block; padding: 6px; background: #fff; border-radius: 8px; }
+.qr figcaption { margin-top: 6px; max-width: 148px; font-size: 12px; line-height: 1.35; color: var(--vp-c-text-2); }
 .label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--vp-c-text-2); }
 .ver { margin: 6px 0 0; padding: 0; border: 0; font-size: 28px; line-height: 1.2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .meta { margin: 6px 0 0; color: var(--vp-c-text-2); font-size: 14px; }
@@ -140,6 +156,9 @@ function formatSize(bytes: number): string {
 .date { color: var(--vp-c-text-2); font-size: 14px; }
 .links { display: flex; gap: 16px; font-size: 14px; }
 .older { margin-top: 20px; color: var(--vp-c-text-2); font-size: 14px; }
+@media (max-width: 640px) {
+  .qr { display: none; }
+}
 @media (max-width: 480px) {
   .hero { padding: 18px; }
   .ver { font-size: 24px; }

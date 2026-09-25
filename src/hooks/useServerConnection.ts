@@ -8,6 +8,14 @@ import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../stora
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, writeText } from "../storage/storage";
 import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type ProfileSummary } from "../ws/connection";
+import type { ServerCompat } from "../ws/serverCompat";
+
+/** A server whose version does not fit this app: what to tell the person, with the versions involved. */
+export interface VersionNotice {
+  compat: Exclude<ServerCompat, "ok">;
+  serverVersion: string;
+  required: string;
+}
 
 /** Removes the given keys from a record, keeping the same object when nothing would change. */
 function omitKeys<T>(record: Record<string, T>, keys: Iterable<string>): Record<string, T> {
@@ -42,6 +50,7 @@ export function useServerConnection() {
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [autoSwitch, setAutoSwitch] = useState<AutoSwitchInfo | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [versionNotice, setVersionNotice] = useState<VersionNotice | null>(null);
 
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
@@ -58,6 +67,7 @@ export function useServerConnection() {
     setStates({});
     setProfiles([]);
     setAutoSwitch(null);
+    setVersionNotice(null);
     const cached = loadLayoutCache(targetHost);
     cacheProfileRef.current = cached?.profile ?? null;
     setProfile(resolveCachedProfile(cached));
@@ -101,6 +111,12 @@ export function useServerConnection() {
         setAutoSwitch(nextAutoSwitch);
       },
       onPaired: (token) => writeText(tokenKey(targetHost), token),
+      onServerVersion: (compat, serverVersion, required) =>
+        setVersionNotice((prev) => {
+          if (compat === "ok") return null;
+          // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
+          return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
+        }),
       onActionError: (message) => {
         if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
         setActionError(message);
@@ -153,6 +169,8 @@ export function useServerConnection() {
     profiles,
     autoSwitch,
     actionError,
+    versionNotice,
+    dismissVersionNotice: () => setVersionNotice(null),
     connect,
     connectScanned,
     forget,

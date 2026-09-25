@@ -1,5 +1,7 @@
 # Releasing the phone app
 
+The one release guide for every part of Macro Grid (tags, order of a release, all signing keys) is [docs/guides/release.md in the server repository](https://github.com/Deccoyi/macro-grid/blob/main/docs/guides/release.md); read it first. This page only has what is specific to the APK.
+
 `scripts\build-release-apk.ps1` builds the web bundle, syncs it into the Android project and runs Gradle's
 `assembleRelease`, then copies the APK to `artifacts\`. The app version is `version` in `package.json`
 (`versionName`), and `versionCode` is derived from it as `major*10000 + minor*100 + patch`, so it always grows with the version.
@@ -53,7 +55,7 @@ Check a signed APK by hand with `apksigner verify --print-certs artifacts\MacroG
 Tags are named `client-vX.Y.Z` (the server uses `server-v...`, plugins `plugin-<name>-v...`). The tag must match `version` in `package.json`.
 The version is a plain `X.Y.Z` (no label, minor and patch below 100; the Gradle build refuses anything else), and "pre-release" is GitHub's flag on the release.
 
-1. On `dev`: decide the version bump ([versioning.md](versioning.md)), set `version` in `package.json` and move `[Unreleased]` in both changelogs to the new version. The public `CHANGELOG.md` section is what the release page and the app's update screen show, so write it for users.
+1. On `dev`: decide the version bump ([versioning.md](versioning.md)), set `version` in `package.json` (and `macroGrid` there, if the app now needs a newer Macro Grid than before; that server version must already be released) and move `[Unreleased]` in both changelogs to the new version. The public `CHANGELOG.md` section is what the release page and the app's update screen show, so write it for users.
 2. Run `npm ci`, `npm run typecheck`, `npm test` and `npm run build`; CI on `dev` must be green.
 3. Build the signed APK (`scripts\build-release-apk.ps1`). The script stops when the certificate is not the release certificate above or when `versionName` / `versionCode` do not match `package.json` (`versionCode` is `major*10000 + minor*100 + patch` and must be higher than the previous release's). Never re-release a version with a different APK.
 4. Install it on a real phone **over the previous release** and pair against the release server.
@@ -66,7 +68,7 @@ The version is a plain `X.Y.Z` (no label, minor and patch below 100; the Gradle 
 ## Release notes
 
 `scripts\release-notes.ps1 -Tag client-vX.Y.Z` prints the body of the release: the version's section of `docs/CHANGELOG.md` (a short pointer to the changelog when there is none)
-followed by the fixed footer `docs/release-notes-footer.md` (alpha, needs the server, network). The workflow runs it; run it by hand to preview the text.
+then a "Works with Macro Grid X.Y.Z or newer" line (from `macroGrid` in `package.json`) and the fixed footer `docs/release-notes-footer.md` (alpha, needs the server, network). The workflow runs it; run it by hand to preview the text.
 
 ## Not done yet
 

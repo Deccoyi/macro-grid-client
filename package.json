@@ -2,6 +2,7 @@
   "name": "macro-grid-client",
   "private": true,
   "version": "0.2.0",
+  "macroGrid": "1.0.0",
   "type": "module",
   "workspaces": [
     "packages/renderer",

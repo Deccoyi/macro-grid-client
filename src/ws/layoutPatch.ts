@@ -1,7 +1,7 @@
 import type { Page, Profile, Widget } from "@macro/renderer";
 
 /** One changed page inside a `layout.patch` (mirrors LayoutDiff.cs server-side). */
-export interface PagePatch {
+interface PagePatch {
   id: string;
   /** The page's own settings (name, cols, rows, gap, ...) — present only when they changed or the page is new. */
   meta?: Record<string, unknown>;
@@ -22,7 +22,7 @@ export interface LayoutPatchData {
   pages: PagePatch[];
 }
 
-export interface PatchedProfile {
+interface PatchedProfile {
   profile: Profile;
   /** Widgets that were added, edited or removed: their cached live state is stale and the server re-sends it. */
   changedWidgetIds: string[];

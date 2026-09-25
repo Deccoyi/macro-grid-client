@@ -1,6 +1,6 @@
-import { ScreenOrientation } from "@capacitor/screen-orientation";
-import { Capacitor } from "@capacitor/core";
-import { setImmersive } from "./kiosk";
+import { setImmersive } from "../native/kiosk";
+import { setOrientation } from "../native/orientation";
+import { readJson, writeJson } from "./storage";
 
 export type OrientationSetting = "auto" | "portrait" | "landscape";
 
@@ -13,21 +13,13 @@ const KEY = "macro-grid.settings";
 const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto" };
 
 export function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppSettings>) };
-  } catch {
-    return DEFAULTS;
-  }
+  const stored = readJson<Partial<AppSettings> | null>(KEY, null);
+  return stored ? { ...DEFAULTS, ...stored } : DEFAULTS;
 }
 
 export function saveSettings(settings: AppSettings): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(settings));
-  } catch {
-    // Best-effort; the toggle just resets to its default next launch.
-  }
+  // Best-effort; the toggle just resets to its default next launch if this fails.
+  writeJson(KEY, settings);
   applySettings(settings);
 }
 
@@ -36,11 +28,5 @@ export function saveSettings(settings: AppSettings): void {
  * cold start on its own). No-ops on web/iOS beyond what each underlying plugin itself no-ops. */
 export function applySettings(settings: AppSettings): void {
   setImmersive(settings.kiosk);
-
-  if (!Capacitor.isNativePlatform()) return;
-  if (settings.orientation === "auto") {
-    ScreenOrientation.unlock().catch(() => {});
-  } else {
-    ScreenOrientation.lock({ orientation: settings.orientation }).catch(() => {});
-  }
+  setOrientation(settings.orientation);
 }

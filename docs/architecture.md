@@ -41,7 +41,7 @@ beyond 400 entries. Resolving references keeps the identity of every part of the
 - **Connect screen:** a server address field, the servers saved from earlier successful connections (a server is remembered once it has sent a layout), a QR scan button and the
   PIN field when pairing is needed. The QR scanner accepts the editor's `macrogrid://pair?host=<ip>&port=<port>&pin=<pin>` code (or a plain `ip:port` or `ip:port:pin`).
 - **Deck:** the current page as a grid. Widgets report `widget.down`, `widget.up`, `widget.longPress`, `widget.doubleTap` and, for sliders and knobs, `widget.value`; the
-  device vibrates on touch. A horizontal swipe across most of the screen sends `page.next` or `page.prev`; the server also pushes `page.show` for `core.page` actions.
+  device vibrates on touch. A two-finger horizontal swipe anywhere on the deck sends `page.next` or `page.prev` (a single finger never changes page, so slider and knob drags are safe); the server also pushes `page.show` for `core.page` actions.
 - **Drawer:** opened by a swipe from the screen edge or a handle whose height you can drag along the edge. It lists the profiles (`profile.change`), shows the lock switch for
   automatic profile switching when the device follows the active window (`profile.lock`), lists and edits the saved servers, and opens the settings.
 - **Settings:** kiosk mode (on by default) and the orientation (automatic, portrait or landscape). They are stored in `localStorage` and pushed to the OS again on every start.

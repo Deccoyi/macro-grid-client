@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BarcodeFormat, BarcodeScanner } from "@capacitor-mlkit/barcode-scanning";
-import { t } from "./i18n";
+import { t } from "../i18n";
 
 export interface ScannedPairing {
   host: string;
@@ -133,7 +133,7 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
 
       {error && (
         <div style={cardStyle}>
-          <p style={{ color: "#ef4444", fontSize: 14, margin: "0 0 16px" }}>{error}</p>
+          <p style={errorTextStyle}>{error}</p>
           <button onClick={onCancel} style={secondaryButtonStyle}>
             {t("qr.back")}
           </button>
@@ -142,12 +142,12 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
 
       {pending && (
         <div style={cardStyle}>
-          <p style={{ color: "#e6e7ea", fontSize: 14, margin: "0 0 16px", lineHeight: 1.5 }}>
+          <p style={confirmTextStyle}>
             {t("qr.confirm")}
             <br />
-            <strong style={{ fontFamily: "ui-monospace, monospace", fontSize: 15 }}>{pending.host}</strong>
+            <strong style={hostStyle}>{pending.host}</strong>
           </p>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <div style={buttonRowStyle}>
             <button onClick={onCancel} style={secondaryButtonStyle}>
               {t("qr.confirm.no")}
             </button>
@@ -161,6 +161,10 @@ export function QrScanScreen({ onCancel, onScanned }: { onCancel: () => void; on
   );
 }
 
+const errorTextStyle: CSSProperties = { color: "#ef4444", fontSize: 14, margin: "0 0 16px" };
+const confirmTextStyle: CSSProperties = { color: "#e6e7ea", fontSize: 14, margin: "0 0 16px", lineHeight: 1.5 };
+const hostStyle: CSSProperties = { fontFamily: "ui-monospace, monospace", fontSize: 15 };
+const buttonRowStyle: CSSProperties = { display: "flex", gap: 10, justifyContent: "center" };
 const overlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,

@@ -5,6 +5,8 @@
  * cold start needs no asset traffic at all for icons already seen.
  */
 
+import { readJson, readText, removeItem, writeJson, writeText } from "../storage/storage";
+
 const STORAGE_PREFIX = "macro-grid.asset.";
 const INDEX_KEY = "macro-grid.assets.index";
 /** Least-recently-used assets beyond this many are dropped from storage (they are refetched if needed again). */
@@ -18,21 +20,13 @@ let index: string[] | null = null;
 
 function loadIndex(): string[] {
   if (index) return index;
-  try {
-    const raw = localStorage.getItem(INDEX_KEY);
-    index = raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    index = [];
-  }
+  index = readJson<string[]>(INDEX_KEY, []);
   return index;
 }
 
+/** Best-effort: the persistent cache is a nice-to-have, the in-memory one still works. */
 function saveIndex(): void {
-  try {
-    localStorage.setItem(INDEX_KEY, JSON.stringify(index));
-  } catch {
-    // Storage full or unavailable — the persistent cache is a nice-to-have, the in-memory one still works.
-  }
+  writeJson(INDEX_KEY, index);
 }
 
 function touch(hash: string): void {
@@ -42,42 +36,28 @@ function touch(hash: string): void {
   list.push(hash);
 }
 
-export function hasAsset(hash: string): boolean {
+function hasAsset(hash: string): boolean {
   return getAsset(hash) !== undefined;
 }
 
-export function getAsset(hash: string): string | undefined {
+function getAsset(hash: string): string | undefined {
   const cached = memory.get(hash);
   if (cached !== undefined) return cached;
-  try {
-    const stored = localStorage.getItem(STORAGE_PREFIX + hash);
-    if (stored !== null) {
-      memory.set(hash, stored);
-      return stored;
-    }
-  } catch {
-    // Storage unavailable.
-  }
-  return undefined;
+  const stored = readText(STORAGE_PREFIX + hash);
+  if (stored === null) return undefined;
+  memory.set(hash, stored);
+  return stored;
 }
 
 export function putAsset(hash: string, data: string): void {
   memory.set(hash, data);
   touch(hash);
-  try {
-    localStorage.setItem(STORAGE_PREFIX + hash, data);
-  } catch {
-    // Storage full or unavailable — keep it in memory only.
-  }
+  writeText(STORAGE_PREFIX + hash, data); // On failure the asset simply stays in memory only.
 
   const list = loadIndex();
   while (list.length > MAX_STORED_ASSETS) {
     const evicted = list.shift()!;
-    try {
-      localStorage.removeItem(STORAGE_PREFIX + evicted);
-    } catch {
-      // ignore
-    }
+    removeItem(STORAGE_PREFIX + evicted);
   }
   saveIndex();
 }

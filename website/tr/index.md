@@ -17,7 +17,7 @@ features:
   - title: QR kodla bağlanın
     details: Düzenleyicideki Eşleştirme penceresinde yer alan QR kodu tarayın, sunucu adresini girin ya da uygulamanın hatırladığı bir sunucuyu seçin. Altı haneli PIN ile bir kez eşleşin, sonra kendiliğinden yeniden bağlanır.
   - title: Tam ekran dokunmatik deck
-    details: Düzenleyicide tasarladığınız profil, sayfa sayfa. Basma, bırakma, uzun basma ve çift dokunma sunucuya gider; slider'lar ve knob'lar çift yönlüdür. Sayfa değiştirmek için sola veya sağa kaydırın.
+    details: Düzenleyicide tasarladığınız profil, sayfa sayfa. Basma, bırakma, uzun basma ve çift dokunma sunucuya gider; slider'lar ve knob'lar çift yönlüdür. Sayfa değiştirmek için iki parmakla sola veya sağa kaydırın.
   - title: Profiller ve pencereyi takip
     details: Profilleri bir çekmeceden değiştirin. İsterseniz PC'deki etkin pencereyi takip edin; duraklatmak için bir kilit anahtarı var.
   - title: Çevrimdışı da çalışır

@@ -17,7 +17,7 @@ features:
   - title: Connect by QR code
     details: Scan the QR code in the editor's Pairing window, enter the server address, or pick a server the app remembers. Pair once with a six-digit PIN and it reconnects on its own.
   - title: A full-screen touch deck
-    details: The profile you designed in the editor, page by page. Press, release, long press and double tap go to the server; sliders and knobs are two-way. Swipe left or right to change pages.
+    details: The profile you designed in the editor, page by page. Press, release, long press and double tap go to the server; sliders and knobs are two-way. Swipe left or right with two fingers to change pages.
   - title: Profiles and follow-the-window
     details: Switch profiles from a drawer. Optionally follow the active window on the PC, with a lock switch to pause it.
   - title: Keeps working offline

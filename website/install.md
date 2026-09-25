@@ -12,4 +12,6 @@ The app is installed from an APK file by hand ("sideloading").
 4. **Install** and open the app. Android may warn that the app comes from an unknown source; that is expected for an alpha build.
 5. **Pair with the server.** Make sure the phone is on the same Wi-Fi as the PC. In the editor, open the **Pairing** window and scan the QR code with the app (allow the camera when asked), or type the server address and PIN. You only need to do this once; the app then keeps a token and reconnects by itself.
 
+Later versions: the app tells you when a new version is available and installs it after you tap (see [Requirements](/requirements)). If you have version 0.1.1, uninstall it once first; see the [Download](/download) page.
+
 More about pairing: [Pair a device](https://deccoyi.github.io/macro-grid/guide/pairing). For everyday use, see the [phone app guide](https://deccoyi.github.io/macro-grid/guide/phone-app).

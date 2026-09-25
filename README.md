@@ -83,7 +83,9 @@ scripts/             the release build
 ## Security
 
 The app talks to the server over plain `ws://`, without encryption, because it is meant for a trusted local network. Android is told to allow cleartext traffic for
-this reason. Do not use it over the internet. Details are in [docs/architecture.md](docs/architecture.md#security). To report a security problem, see [SECURITY.md](SECURITY.md).
+this reason. Do not use it over the internet.
+The one other connection the app makes is the optional update check: at start and about every six hours it asks github.com whether a newer version exists (it sends only the
+app name and version) and installs nothing until you tap. You can turn it off in Settings. Details are in [docs/architecture.md](docs/architecture.md#security). To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## Documentation
 

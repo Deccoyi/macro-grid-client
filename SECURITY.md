@@ -6,6 +6,11 @@ Macro Grid is designed for a home or office network you trust. It is **not harde
 
 - **Plain, unencrypted traffic.** The app talks to the server over plain `ws://`. Anyone who can see the traffic on your network can read it, including the pairing PIN and the token
   that is stored after pairing. Android is told to allow cleartext traffic for this reason.
+- **One optional connection: the update check.** At start and about every six hours the app asks github.com whether a newer version exists. It sends only a program name and
+  version (`MacroGridClient/<version>`), nothing about you or the phone, and installs nothing until you tap "Update now". A downloaded file is checked against the SHA-256 GitHub
+  reports for it, and Android installs it only if it is signed with the same key as the installed app, which stays on the maintainer's own computer and is never put on GitHub.
+  Android asks once for permission to install apps and shows its own confirmation (and possibly a security warning) each time. You can turn the check off in Settings, and
+  choose whether updates may download over mobile data (Wi-Fi only by default).
 - **LAN-only model.** The security model assumes that everyone on the network is at least somewhat trusted. Pairing (a six-digit PIN, then a token) keeps out casual connections; it is not
   a defense against an attacker on the same network. The whole system is described in the server repository's `docs/architecture.md`, and this app's part in
   [docs/architecture.md](docs/architecture.md#security).

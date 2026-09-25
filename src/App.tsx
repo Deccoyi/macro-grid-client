@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { InfoToast } from "./components/InfoToast";
+import { UpdateScreen } from "./components/UpdateScreen";
 import { useKeepAwake } from "./hooks/useKeepAwake";
+import { useLanguage } from "./hooks/useLanguage";
 import { useServerConnection } from "./hooks/useServerConnection";
+import { useUpdate } from "./hooks/useUpdate";
+import { t } from "./i18n";
 import { ConnectScreen } from "./screens/ConnectScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
@@ -19,6 +24,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
+  const update = useUpdate(appSettings);
+  const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
   const connect = useCallback(
@@ -29,6 +36,10 @@ export function App() {
     },
     [connectToServer],
   );
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   // Android doesn't remember immersive mode / orientation lock across a cold start on its own —
   // re-push the last saved choice every launch.
@@ -51,6 +62,16 @@ export function App() {
   useKeepAwake(conn.profile !== null);
 
   // Every hook above must run on every render — this is the first point an early return is safe.
+  const screen = renderScreen();
+  return (
+    <>
+      {screen}
+      <UpdateScreen update={update} />
+      {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
+    </>
+  );
+
+  function renderScreen() {
   if (scanning) {
     return <QrScanScreen onCancel={() => setScanning(false)} onScanned={handleScanned} />;
   }
@@ -125,6 +146,8 @@ export function App() {
         setAppSettings(next);
         saveSettings(next);
       }}
+      update={update}
     />
   );
+  }
 }

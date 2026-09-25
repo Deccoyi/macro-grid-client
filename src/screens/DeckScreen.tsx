@@ -3,9 +3,11 @@ import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/rendere
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { ProfileDrawer } from "../components/ProfileDrawer";
-import { SettingsPanel } from "../components/SettingsPanel";
+import { SettingsScreen } from "../components/SettingsScreen";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDeckSwipe } from "../hooks/useDeckSwipe";
+import type { UpdateController } from "../hooks/useUpdate";
+import { versionToString } from "../update/releaseVersion";
 import type { AppSettings } from "../storage/settings";
 import { colors } from "../theme";
 import type { AutoSwitchInfo, ConnectionStatus, ProfileSummary } from "../ws/connection";
@@ -56,6 +58,7 @@ interface DeckScreenProps {
   onSettingsOpenChange: (open: boolean) => void;
   appSettings: AppSettings;
   onAppSettingsChange: (settings: AppSettings) => void;
+  update: UpdateController;
 }
 
 /** The live deck: the current page's grid plus the connection badge, error toast, drawer and settings. */
@@ -87,6 +90,7 @@ export function DeckScreen({
   onSettingsOpenChange,
   appSettings,
   onAppSettingsChange,
+  update,
 }: DeckScreenProps) {
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
@@ -97,7 +101,7 @@ export function DeckScreen({
 
       {/* Always-visible edge handle: a swipe works too, but a hidden-only gesture is easy to miss.
           Shown even with a single profile — it's also the only way to reach the settings. */}
-      {!drawerOpen && <DrawerHandle onOpen={() => onDrawerOpenChange(true)} />}
+      {!drawerOpen && <DrawerHandle onOpen={() => onDrawerOpenChange(true)} showDot={update.offer !== null} />}
 
       <Grid
         page={page}
@@ -142,9 +146,14 @@ export function DeckScreen({
           onDrawerOpenChange(false);
           onSettingsOpenChange(true);
         }}
+        updateVersion={update.offer ? versionToString(update.offer.latest.version) : null}
+        onOpenUpdate={() => {
+          onDrawerOpenChange(false);
+          update.openScreen();
+        }}
       />
 
-      <SettingsPanel open={settingsOpen} settings={appSettings} onChange={onAppSettingsChange} onClose={() => onSettingsOpenChange(false)} />
+      <SettingsScreen open={settingsOpen} settings={appSettings} onChange={onAppSettingsChange} onClose={() => onSettingsOpenChange(false)} update={update} />
     </div>
   );
 }

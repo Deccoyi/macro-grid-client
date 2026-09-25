@@ -12,6 +12,11 @@ default SDK folder.
 A phone only installs a signed APK, and an update only installs over an app signed with the same key. So the key is created
 once and kept forever.
 
+**The release APK is signed on the maintainer's PC and uploaded to the release by hand. The key and its passwords are never put on GitHub**
+(no repository or environment secrets, and CI never builds a release APK). Why: the key cannot be replaced. Whoever holds it can make phones
+accept a malicious APK as an update, and changing it means every user has to uninstall and reinstall. With the key on one PC, even a
+compromised GitHub account cannot push an update that installed phones accept.
+
 1. Create the keystore (choose your own passwords, and keep the file somewhere safe outside the repo, with a backup):
 
    ```powershell
@@ -27,30 +32,41 @@ once and kept forever.
    keyPassword=...
    ```
 
-3. Run `scripts\build-release-apk.ps1`. With that file present the APK is signed and named `MacroGrid-<version>.apk`;
-   without it the build still succeeds but the APK is `MacroGrid-<version>-unsigned.apk` and cannot be installed.
+3. Run `scripts\build-release-apk.ps1`. With that file present the APK is signed and named `MacroGrid-<version>.apk`
+   (the phone app's updater looks for exactly this name); without it the build still succeeds but the APK is
+   `MacroGrid-<version>-unsigned.apk` and cannot be installed. For a signed APK the script then checks the signer, `versionName` and
+   `versionCode` (see the checklist).
 
-If the keystore is lost, existing installs can no longer be updated: users would have to uninstall and reinstall.
+**If the keystore is lost, the update path is closed for good:** existing installs can no longer be updated and every user has to uninstall and
+reinstall. Keep an encrypted backup of the key folder outside every repository (a USB stick or encrypted storage) and the passwords in a password manager.
 
-Check a signed APK with `apksigner verify --print-certs artifacts\MacroGrid-<version>.apk` (in the Android SDK's `build-tools`).
+The release certificate (public information; the key is not) has this SHA-256 fingerprint. Every release APK must show it:
+
+```
+cba39e128ebeaa805390295c5602857f9c6bb3d1e5ba4a9b8c603bcae4c36afd
+```
+
+Check a signed APK by hand with `apksigner verify --print-certs artifacts\MacroGrid-<version>.apk` (in the Android SDK's `build-tools`).
 
 ## Release checklist
 
 Tags are named `client-vX.Y.Z` (the server uses `server-v...`, plugins `plugin-<name>-v...`). The tag must match `version` in `package.json`.
+The version is a plain `X.Y.Z` (no label, minor and patch below 100; the Gradle build refuses anything else), and "pre-release" is GitHub's flag on the release.
 
-1. On `dev`: decide the version bump ([versioning.md](versioning.md)), set `version` in `package.json` and move `[Unreleased]` in both changelogs to the new version.
+1. On `dev`: decide the version bump ([versioning.md](versioning.md)), set `version` in `package.json` and move `[Unreleased]` in both changelogs to the new version. The public `CHANGELOG.md` section is what the release page and the app's update screen show, so write it for users.
 2. Run `npm ci`, `npm run typecheck`, `npm test` and `npm run build`; CI on `dev` must be green.
-3. Build the signed APK (`scripts\build-release-apk.ps1`), verify it with `apksigner`, install it on a real phone and pair against the release server.
-4. Update `docs/release-notes-client-v0.x-alpha.md` (from the public `CHANGELOG.md`).
+3. Build the signed APK (`scripts\build-release-apk.ps1`). The script stops when the certificate is not the release certificate above or when `versionName` / `versionCode` do not match `package.json` (`versionCode` is `major*10000 + minor*100 + patch` and must be higher than the previous release's). Never re-release a version with a different APK.
+4. Install it on a real phone **over the previous release** and pair against the release server.
 5. Merge `dev` into `main`, then tag: `git tag client-vX.Y.Z` and push the tag.
-6. The `Release` workflow (`.github/workflows/release.yml`) builds the APK and creates a **draft** pre-release. Review it, replace or confirm the APK, then publish the draft.
-7. Merge `main` back into `dev` if the release commit changed anything.
+6. The `Release` workflow (`.github/workflows/release.yml`) builds a debug APK as a build check only (a workflow artifact, kept a few days), and creates a **draft** pre-release whose notes are the version's section of `docs/CHANGELOG.md` plus `docs/release-notes-footer.md`. It attaches **no APK**.
+7. Upload the signed `MacroGrid-<version>.apk` from step 3 to the draft (the release page, or the GitHub command-line client). Check that the asset name is exactly that, that GitHub shows a `sha256:` digest for it, and that no other APK is attached. Never attach a `-debug` or `-unsigned` file.
+8. Publish the draft. Once the phone app has an updater, publishing reaches every running app within about 6 hours, so step 4 is mandatory.
+9. Merge `main` back into `dev` if the release commit changed anything.
 
-### Release CI and signing
+## Release notes
 
-The workflow signs the APK only if these repository secrets exist: `ANDROID_KEYSTORE_BASE64` (the keystore file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
-Without them it attaches a debug-signed APK named `MacroGrid-<version>-debug.apk`; that installs, but it is not a real release build and cannot be updated by a later release-signed APK.
-The keystore is never committed: it is decoded into the runner's temp folder for the build and deleted afterwards. Keep the master copy and a backup outside the repository.
+`scripts\release-notes.ps1 -Tag client-vX.Y.Z` prints the body of the release: the version's section of `docs/CHANGELOG.md` (a short pointer to the changelog when there is none)
+followed by the fixed footer `docs/release-notes-footer.md` (alpha, needs the server, network). The workflow runs it; run it by hand to preview the text.
 
 ## Not done yet
 

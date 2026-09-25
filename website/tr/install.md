@@ -12,4 +12,6 @@ Uygulama, bir APK dosyasından elle kurulur ("sideloading").
 4. **Kurun** ve uygulamayı açın. Android, uygulamanın bilinmeyen bir kaynaktan geldiği konusunda uyarabilir; alfa bir derleme için bu beklenen bir durumdur.
 5. **Sunucuyla eşleşin.** Telefonun PC ile aynı Wi-Fi ağında olduğundan emin olun. Düzenleyicide **Eşleştirme** penceresini açın ve QR kodu uygulamayla tarayın (sorulduğunda kameraya izin verin) ya da sunucu adresini ve PIN'i elle yazın. Bunu yalnızca bir kez yapmanız yeterli; uygulama bir belirteç (token) saklar ve kendiliğinden yeniden bağlanır.
 
+Sonraki sürümler: uygulama yeni bir sürüm olduğunda size söyler ve siz dokununca kurar ([Gereksinimler](/tr/requirements) sayfasına bakın). Telefonunuzda 0.1.1 sürümü varsa önce bir kez kaldırın; [İndir](/tr/download) sayfasına bakın.
+
 Eşleştirme hakkında daha fazlası: [Cihaz eşleştirme](https://deccoyi.github.io/macro-grid/guide/pairing). Günlük kullanım için [telefon uygulaması kılavuzuna](https://deccoyi.github.io/macro-grid/guide/phone-app) bakın.

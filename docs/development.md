@@ -28,6 +28,8 @@ npx cap sync android   # copy it into the Android project
 npx cap open android   # or build from the command line, below
 ```
 
+Run both first, every time: an old `cap sync` leaves a stale plugin list in the Android project, and then a plugin (the QR scanner once) is silently missing at run time.
+
 To install a debug build on a phone with USB debugging turned on:
 
 ```powershell
@@ -36,6 +38,11 @@ cd android
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell am start -n com.macrogrid.client/.MainActivity
 ```
+
+To try the update screens without a release, build with a made-up releases list: set `VITE_DEBUG_UPDATE_FEED` to a JSON list in the shape of GitHub's releases list before
+`npm run build`. Only a build made that way reads it; a normal build has no such value. The download itself still needs a file the app can verify, so a full update is
+tried by putting an APK that matches the list's size and SHA-256 into the app's `cache/updates/<version>/` folder (debug builds only, with `adb shell run-as`), and a debug
+build with another package name (`applicationIdSuffix`) keeps the real app untouched.
 
 `adb` is in the SDK's `platform-tools` folder and is usually not on the `PATH`. In Git Bash, paths that look like Unix paths on the device (`/sdcard/...`) are rewritten by MSYS; set
 `MSYS_NO_PATHCONV=1` for `adb shell` and `adb pull`.

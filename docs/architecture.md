@@ -63,16 +63,23 @@ the two are deliberately not kept in sync, so a change that both need is made in
 
 ## Native Android pieces
 
-Two small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client/`:
+Three small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client/`:
 
 - `KioskPlugin`: Android's immersive mode (hides the status and navigation bars). It is re-applied whenever the window regains focus, because the system clears it when the
   notification shade is pulled down. It is not screen pinning; Android does not let an app do that on its own.
 - `GestureExclusionPlugin`: excludes the drawer's edge zone from Android's system back-swipe gesture so opening the drawer works (Android 10 and newer).
+- `UpdaterPlugin` (with `UpdaterRules` and `InstallResultReceiver`): the app's self-update, everything that must not run in the WebView. It fetches the fixed releases list of this
+  repository (ETag, no data about the phone), reads whether the network is unmetered, downloads the APK into the private cache folder (https on GitHub hosts only, redirects
+  checked at every hop, size and SHA-256 verified), refuses a file signed by another key than the installed app, hands it to Android's `PackageInstaller` and removes what is
+  not needed, so at most one downloaded APK stays. The decisions (which release, when to check, Later and Skip) are TypeScript in `src/update/` and `src/hooks/useUpdate.ts`;
+  the plan is in the server repository (`docs/plans/phone-app-auto-update-plan.md`).
 
-Cleartext traffic is allowed (`usesCleartextTraffic` and `allowMixedContent`) because the server speaks plain `ws://`. Permissions: `INTERNET`, `CAMERA` (the QR scanner) and `VIBRATE`.
+Cleartext traffic is allowed (`usesCleartextTraffic` and `allowMixedContent`) because the server speaks plain `ws://`. Permissions: `INTERNET`, `ACCESS_NETWORK_STATE` (Wi-Fi or mobile data, for the update download), `REQUEST_INSTALL_PACKAGES` (install its own updates), `CAMERA` (the QR scanner) and `VIBRATE`.
 
 ## Security
 
 - Traffic to the server is not encrypted; use the app only on a network you trust.
-- The pairing token is kept in `localStorage` in the app's own storage.
+- The pairing token is kept in `localStorage` in the app's own storage. An update keeps it (same app, same signing key).
+- The only other connection is the optional update check to `api.github.com` and the download from GitHub hosts. Nothing is installed without a tap, Android shows its own
+  confirmation, and an APK signed with another key cannot replace the app. The release signing key never leaves the maintainer's computer (`docs/release.md`).
 - The QR scanner uses the ML Kit barcode scanner through a Capacitor plugin; scanned codes are only parsed as a server address and PIN.

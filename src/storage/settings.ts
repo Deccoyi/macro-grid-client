@@ -4,13 +4,21 @@ import { readJson, writeJson } from "./storage";
 
 export type OrientationSetting = "auto" | "portrait" | "landscape";
 
+/** Which connection a downloaded update may use: "wifi" is an unmetered connection only (the default), "any" also allows mobile data. */
+export type UpdateNetworkSetting = "wifi" | "any";
+
 export interface AppSettings {
   kiosk: boolean;
   orientation: OrientationSetting;
+  /** Look for a newer version by itself (at start and about every six hours while the app is open). */
+  checkForUpdates: boolean;
+  /** Also offer pre-release versions (every release is one while the app is in alpha). */
+  includePreReleases: boolean;
+  updateNetwork: UpdateNetworkSetting;
 }
 
 const KEY = "macro-grid.settings";
-const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto" };
+const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi" };
 
 export function loadSettings(): AppSettings {
   const stored = readJson<Partial<AppSettings> | null>(KEY, null);

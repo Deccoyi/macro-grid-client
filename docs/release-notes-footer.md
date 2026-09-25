@@ -1,0 +1,1 @@
+Alpha software, written by an AI assistant and not independently audited; provided as is, without warranty. Needs the Macro Grid server on a Windows PC on the same network and Android 7.0 or newer. Traffic to the server is not encrypted; use it on a network you trust.

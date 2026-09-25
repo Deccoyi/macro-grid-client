@@ -3,7 +3,15 @@ apply plugin: 'com.android.application'
 // The app version comes from package.json (the single place the client version lives, see docs/versioning.md):
 // versionName is the semver string, versionCode is major*10000 + minor*100 + patch so it always grows with it.
 def appPackage = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+// The updater and versionCode both rely on a plain MAJOR.MINOR.PATCH (a label such as -alpha is not allowed here; "pre-release" is only
+// GitHub's flag on the release) and on minor and patch staying below 100, otherwise versionCode would stop growing.
+if (!(appPackage.version ==~ /^\d+\.\d+\.\d+$/)) {
+    throw new GradleException("package.json version '${appPackage.version}' must be a plain MAJOR.MINOR.PATCH (no label), see docs/versioning.md")
+}
 def appVersionParts = appPackage.version.tokenize('.').collect { it.toInteger() }
+if (appVersionParts[1] >= 100 || appVersionParts[2] >= 100) {
+    throw new GradleException("package.json version '${appPackage.version}': minor and patch must be below 100 or versionCode stops growing, see docs/versioning.md")
+}
 def appVersionCode = appVersionParts[0] * 10000 + appVersionParts[1] * 100 + appVersionParts[2]
 
 // Release signing: android/keystore.properties (never committed) points at the keystore and holds its

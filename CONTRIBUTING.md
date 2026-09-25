@@ -28,8 +28,9 @@ See [docs/development.md](docs/development.md) for the requirements, how to run 
 - **Language.** Code, identifiers, comments, documentation, changelogs, log messages and commit messages are written in **English**. The app's screens are currently hard-coded Turkish;
   a proper translation layer is welcome as its own change. If you touch existing Turkish text in code, comments or docs that is not screen text, translate the part you touch.
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): description`, for example `fix(client): keep the drawer open while a profile loads`.
-- **Changelogs.** Update both under `[Unreleased]` when a change is finished: `docs/CHANGELOG-developer.md` (detailed, technical) and `docs/CHANGELOG.md` (short, plain sentences for
-  non-developers, no code, file or API names, and without small fixes or internal changes).
+- **Changelogs.** When a change is finished, update `docs/CHANGELOG.md` under `[Unreleased]` (short, plain sentences for non-developers, no code, file or API names, and without
+  small fixes or internal changes). Add to `docs/CHANGELOG-developer.md` only for changes to the WebSocket protocol or the capabilities the app announces, breaking changes,
+  migrations, or anything a maintainer has to do differently; the rest belongs in the commit message and the pull request description.
 - **Versions** are never bumped in a pull request; the maintainer decides at release time ([docs/versioning.md](docs/versioning.md)). Keep the protocol compatible: add optional capabilities
   instead of changing existing messages.
 - **Names.** Do not mention third-party product or brand names in code, comments, docs or commits, except where the product is the functional target of the code itself.
@@ -55,6 +56,32 @@ To try the app on a phone, build the web bundle, run `npx cap sync android`, the
 ## Security
 
 Please do not report security problems in a public issue; see [SECURITY.md](SECURITY.md). For other questions, open an issue.
+
+## Issues and labels
+
+Open an issue from the [chooser](https://github.com/Deccoyi/macro-grid-client/issues/new/choose): pick a form, or its plain-text twin (the same questions, written as
+text you fill in). Questions and ideas start in [Discussions](https://github.com/Deccoyi/macro-grid-client/discussions); a maintainer turns one into an issue when there is
+something to fix or build. Security problems go to the private form, never to a public issue.
+
+What the labels mean. New issues get `needs-triage` and the area on their own; the maintainer sets the rest.
+
+| Label | Meaning |
+|---|---|
+| `bug`, `enhancement`, `documentation` | The kind of work. |
+| `regression` | It worked in an earlier version. |
+| `area: connection` | Connecting to the server, pairing |
+| `area: deck` | The deck screen |
+| `area: kiosk` | Kiosk mode or screen rotation |
+| `area: settings` | The app's settings |
+| `area: updates` | Checking for or installing app updates |
+| `area: install` | Installing the app |
+| `needs-triage` | Not looked at yet (automatic). |
+| `needs-info` | We asked a question and wait for the reporter. |
+| `confirmed` | Reproduced or accepted by a maintainer. |
+| `in progress` | Someone is working on it. |
+| `priority: high` | Blocks people: a crash, lost data or a broken install. |
+| `good first issue`, `help wanted` | A good place to start, or where help is welcome. |
+| `duplicate`, `invalid`, `wontfix` | Closing reasons; the closing comment says why. |
 
 ## License
 

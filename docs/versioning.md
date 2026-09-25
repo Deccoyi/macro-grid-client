@@ -20,9 +20,9 @@ reverse. New optional protocol features should be added the same way. Removing o
 ## Releasing
 
 Work happens on the `dev` branch and is merged into `main` for a release. Before a merge to `main` the maintainer decides whether the version is bumped and by how much; a version number is never
-changed silently. When a bump is approved both changelogs get their entry:
+changed silently. When a bump is approved the changelogs get their entry:
 
-- `docs/CHANGELOG-developer.md`: detailed and technical, in [Keep a Changelog](https://keepachangelog.com/) format.
-- `docs/CHANGELOG.md`: short, plain sentences for people who are not developers, with no code, file or API names and without small fixes or internal changes.
+- `docs/CHANGELOG.md`: short, plain sentences for people who are not developers, with no code, file or API names and without small fixes or internal changes. It is also the source of the release notes.
+- `docs/CHANGELOG-developer.md`: in [Keep a Changelog](https://keepachangelog.com/) format, only for what git history cannot carry: changes to the protocol or the announced capabilities, breaking changes, migrations and anything a maintainer has to do differently. Older entries are more detailed and stay as they are.
 
 Both are written in English. See [release.md](release.md) for building and signing the APK.

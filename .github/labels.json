@@ -1,0 +1,62 @@
+[
+  {
+    "name": "regression",
+    "color": "b60205",
+    "description": "It worked in an earlier version"
+  },
+  {
+    "name": "priority: high",
+    "color": "b60205",
+    "description": "Blocks people: a crash, lost data or a broken install"
+  },
+  {
+    "name": "needs-triage",
+    "color": "fbca04",
+    "description": "New issue, not looked at yet (added automatically)"
+  },
+  {
+    "name": "needs-info",
+    "color": "e4e669",
+    "description": "We asked a question and are waiting for the reporter"
+  },
+  {
+    "name": "confirmed",
+    "color": "d9c400",
+    "description": "Reproduced or accepted by a maintainer"
+  },
+  {
+    "name": "in progress",
+    "color": "b7a600",
+    "description": "Someone is working on it"
+  },
+  {
+    "name": "area: connection",
+    "color": "1d76db",
+    "description": "Connecting to the server, pairing"
+  },
+  {
+    "name": "area: deck",
+    "color": "1d76db",
+    "description": "The deck screen"
+  },
+  {
+    "name": "area: kiosk",
+    "color": "1d76db",
+    "description": "Kiosk mode or screen rotation"
+  },
+  {
+    "name": "area: settings",
+    "color": "1d76db",
+    "description": "The app's settings"
+  },
+  {
+    "name": "area: updates",
+    "color": "1d76db",
+    "description": "Checking for or installing app updates"
+  },
+  {
+    "name": "area: install",
+    "color": "1d76db",
+    "description": "Installing the app"
+  }
+]

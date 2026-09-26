@@ -34,9 +34,22 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Stop on known vulnerable dependencies
+        # Production packages only: they are what ends up in the app.
+        run: npm audit --omit=dev --audit-level=moderate
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+
+  dependency-review:
+    name: Dependencies added by this pull request
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit: a moved tag cannot change what runs here.
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
 
   debug-apk:
     name: Debug APK (manual)

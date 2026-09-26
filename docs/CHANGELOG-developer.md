@@ -6,6 +6,7 @@ This repo is the **client** (phone/tablet) side of Macro Grid and is versioned i
 
 ## [Unreleased]
 ### Added
+- **Vulnerability check and SBOM:** CI runs `npm audit --omit=dev --audit-level=moderate` after `npm ci` and a `dependency-review` job on pull requests; `release.yml` runs the same audit before building and attaches `MacroGrid-Client-<version>-sbom.cdx.json` (CycloneDX, production npm packages from `package-lock.json`) to the draft release. The Android (Gradle) libraries are not in the SBOM yet. A fixed vulnerability goes under `### Security` in both changelogs and gets a GitHub security advisory.
 - **`macroGrid` in `package.json`** (`"1.0.0"`, three parts): the oldest Macro Grid the app works with; it works with every later version of the same MAJOR. When `welcome` arrives, `ServerConnection` compares `serverVersion` with it (`src/ws/serverCompat.ts`, `checkServerVersion`) and calls the new optional `onServerVersion` event; the app shows a toast ("update Macro Grid on the computer" for an older server or MAJOR, "update the app" for a newer MAJOR). It never blocks the connection, and an unreadable version never warns. Raise the field only when the app starts to need something new in the server. `scripts/release-notes.ps1` adds "Works with Macro Grid X.Y.Z or newer" to the release notes from the same field. The server and the plugin SDK now share one version (Macro Grid 1.0.0), see the server repository's `docs/guides/versioning.md`.
 
 ## [0.2.0] - 2026-09-25

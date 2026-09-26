@@ -4,6 +4,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 ### New
+- **Component list:** Every release now comes with a list of the components the app contains, and a release is only built when none of them has a known security problem.
 - **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
 
 ## 0.2.0 - 2026-09-25

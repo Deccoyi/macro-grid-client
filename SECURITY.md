@@ -32,6 +32,18 @@ Macro Grid is a hobby project maintained in spare time, not a full-time job or a
 maintainer will try to fix real problems, but there is no guaranteed response time, no guaranteed fix, no support schedule and no bug
 bounty. Fixes land when there is time for them. If that is not acceptable for how you use the software, do not rely on it.
 
+## How fixes are announced
+
+When a reported vulnerability is fixed, the fix is described in a GitHub security advisory on this repository and under "Security" in the
+changelog of the release that contains it.
+
 ## Supported versions
 
-Only the latest release (or, before the first release, the `dev` branch) receives fixes. The project is in alpha.
+Only the latest release (or, before the first release, the `dev` branch) receives fixes. A version stops receiving fixes as soon as a newer
+one is released; there is no longer support period. The project is in alpha.
+
+## What a release contains
+
+Every release has a software bill of materials (SBOM) attached: a CycloneDX JSON file (`MacroGrid-Client-<version>-sbom.cdx.json`) that lists
+the npm packages bundled into the app. The Android libraries added by the Android build are not in it yet. A release is only built when none of
+the bundled npm packages has a known vulnerability (moderate or higher), and every pull request runs the same check.

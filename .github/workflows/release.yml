@@ -35,6 +35,8 @@ jobs:
           echo "VERSION=${version}" >> "$GITHUB_ENV"
 
       - run: npm ci
+      - name: Stop on known vulnerable dependencies
+        run: npm audit --omit=dev --audit-level=moderate
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -53,15 +55,20 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
+      # CycloneDX list of the npm packages the app bundles (production only, read from package-lock.json). The Android
+      # libraries that Gradle adds are not in it yet. The renderer's demo workspace is listed although it is not shipped.
+      - name: Write the software bill of materials
+        run: npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --omit dev --ignore-npm-errors --package-lock-only --output-format JSON --output-file "MacroGrid-Client-${VERSION}-sbom.cdx.json"
+
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           # The body is this version's section of docs/CHANGELOG.md plus a short fixed footer; the phone app's
-          # update screen shows it. No APK is attached here.
+          # update screen shows it. Only the SBOM is attached here, no APK.
           ./scripts/release-notes.ps1 -Tag $env:GITHUB_REF_NAME -Footer docs/release-notes-footer.md | Set-Content -Encoding utf8 release-notes.md
-          gh release create $env:GITHUB_REF_NAME `
+          gh release create $env:GITHUB_REF_NAME "MacroGrid-Client-$env:VERSION-sbom.cdx.json" `
             --draft --prerelease `
             --title "Macro Grid client $env:VERSION (alpha)" `
             --notes-file release-notes.md

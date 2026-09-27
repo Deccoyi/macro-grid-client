@@ -4,6 +4,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.pm.InstallSourceInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
@@ -395,9 +396,11 @@ public class UpdaterPlugin extends Plugin {
 
     /**
      * Hands the downloaded APK of {@code version} to Android's installer. Resolves when the session is committed; the outcome
-     * arrives as the {@code installResult {status, message}} event ("success", "cancelled", "incompatible", "storage", "failed"),
-     * after Android has shown its own confirmation dialog (it cannot be skipped). When it succeeds Android stops the app.
-     * Codes: bad_request, not_downloaded, signer_mismatch, install_not_allowed, install_failed.
+     * arrives as the {@code installResult {status, message}} event ("success", "cancelled", "incompatible", "storage", "failed").
+     * On Android 12 (API 31) and newer, once this app has updated itself at least once before (see {@link #isInstallerOfRecord}),
+     * Android may skip its own confirmation dialog; on every other phone, and always for the very first self-update, the dialog
+     * still shows — either way "Update now" itself stays a deliberate tap, nothing installs without the person asking for it.
+     * When it succeeds Android stops the app. Codes: bad_request, not_downloaded, signer_mismatch, install_not_allowed, install_failed.
      */
     @PluginMethod
     public void install(PluginCall call) {
@@ -436,6 +439,13 @@ public class UpdaterPlugin extends Plugin {
         PackageInstaller installer = context.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(context.getPackageName());
+        // Asking for this does not guarantee it: Android silently keeps showing its dialog whenever the other
+        // conditions in the class doc aren't met (an older targetSdk, "update ownership", ...) — never a crash,
+        // just the normal prompt. See phone-app-auto-update.md ("fewer prompts on Android 12 and newer") for why
+        // isInstallerOfRecord is the one condition worth checking ourselves.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isInstallerOfRecord()) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        }
         int sessionId = installer.createSession(params);
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream in = new FileInputStream(apk); OutputStream out = session.openWrite("macro-grid.apk", 0, apk.length())) {
@@ -452,6 +462,22 @@ public class UpdaterPlugin extends Plugin {
         } catch (IOException | RuntimeException e) {
             installer.abandonSession(sessionId);
             throw e;
+        }
+    }
+
+    /**
+     * Whether this app is on record as the installer of its own currently-installed copy — true once it has
+     * self-updated at least one time before, false for a copy a person installed by hand (the file manager or
+     * `adb install` is the installer of record then, not this app), which always keeps the normal dialog for
+     * its first self-update. {@link android.content.pm.PackageManager#getInstallSourceInfo} needs API 30.
+     */
+    private boolean isInstallerOfRecord() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false;
+        try {
+            InstallSourceInfo info = getContext().getPackageManager().getInstallSourceInfo(getContext().getPackageName());
+            return getContext().getPackageName().equals(info.getInstallingPackageName());
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
         }
     }
 

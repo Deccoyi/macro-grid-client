@@ -9,6 +9,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 - **Skip pairing:** A close button on the pairing screen lets you go straight to Settings without pairing first.
 - **Simpler server address:** You only need to type the IP address; the port is filled in for you unless your server uses a different one.
 - **Forget the current server:** You can now remove your current server from the list too, not just the others.
+- **Fewer update prompts:** On Android 12 and newer, after the app has updated itself once, later updates may install without asking for confirmation each time. "Update now" is still always your choice.
 
 ### Fixed
 - **Wrong PIN:** Entering a wrong pairing PIN now shows why it didn't work (wrong PIN, too many tries, or pairing closed on the computer) instead of doing nothing, and a lockout now counts down for real instead of showing a frozen number.

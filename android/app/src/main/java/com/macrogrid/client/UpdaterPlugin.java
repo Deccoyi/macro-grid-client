@@ -443,6 +443,12 @@ public class UpdaterPlugin extends Plugin {
         // conditions in the class doc aren't met (an older targetSdk, "update ownership", ...) — never a crash,
         // just the normal prompt. See phone-app-auto-update.md ("fewer prompts on Android 12 and newer") for why
         // isInstallerOfRecord is the one condition worth checking ourselves.
+        //
+        // Easy to lose an hour on: the official reference for setRequireUserAction doesn't lead with it, but the
+        // manifest must also declare android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION (see
+        // AndroidManifest.xml) or every one of the conditions below can hold true and Android still always shows
+        // the dialog. Confirmed by testing: without that permission this if-branch runs every time and nothing
+        // changes; add it and the second self-update in a row skips the dialog as expected.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isInstallerOfRecord()) {
             params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         }

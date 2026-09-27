@@ -3,12 +3,10 @@ import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/rendere
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { ProfileDrawer } from "../components/ProfileDrawer";
-import { SettingsScreen } from "../components/SettingsScreen";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDeckSwipe } from "../hooks/useDeckSwipe";
 import type { UpdateController } from "../hooks/useUpdate";
 import { versionToString } from "../update/releaseVersion";
-import type { AppSettings } from "../storage/settings";
 import { colors } from "../theme";
 import type { AutoSwitchInfo, ConnectionStatus, ProfileSummary } from "../ws/connection";
 
@@ -54,10 +52,7 @@ interface DeckScreenProps {
   onWidgetValueCommit: (widgetId: string, value: number) => void;
   onSwipeNextPage: () => void;
   onSwipePrevPage: () => void;
-  settingsOpen: boolean;
   onSettingsOpenChange: (open: boolean) => void;
-  appSettings: AppSettings;
-  onAppSettingsChange: (settings: AppSettings) => void;
   update: UpdateController;
 }
 
@@ -86,10 +81,7 @@ export function DeckScreen({
   onWidgetValueCommit,
   onSwipeNextPage,
   onSwipePrevPage,
-  settingsOpen,
   onSettingsOpenChange,
-  appSettings,
-  onAppSettingsChange,
   update,
 }: DeckScreenProps) {
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
@@ -152,8 +144,6 @@ export function DeckScreen({
           update.openScreen();
         }}
       />
-
-      <SettingsScreen open={settingsOpen} settings={appSettings} onChange={onAppSettingsChange} onClose={() => onSettingsOpenChange(false)} update={update} />
     </div>
   );
 }

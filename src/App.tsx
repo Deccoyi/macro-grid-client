@@ -6,6 +6,7 @@ import { useLanguage } from "./hooks/useLanguage";
 import { useServerConnection } from "./hooks/useServerConnection";
 import { useUpdate } from "./hooks/useUpdate";
 import { t } from "./i18n";
+import { SettingsScreen } from "./components/SettingsScreen";
 import { ConnectScreen } from "./screens/ConnectScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
@@ -66,6 +67,7 @@ export function App() {
   return (
     <>
       {screen}
+      <SettingsScreen open={settingsOpen} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
       <UpdateScreen update={update} />
       {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
       {conn.versionNotice && (
@@ -112,6 +114,7 @@ export function App() {
               }
             : undefined
         }
+        onOpenSettings={addingServer ? undefined : () => setSettingsOpen(true)}
       />
     );
   }
@@ -151,13 +154,7 @@ export function App() {
       onWidgetValueCommit={(widgetId, value) => conn.send("widget.value", { pageId: page.id, widgetId, value })}
       onSwipeNextPage={conn.nextPage}
       onSwipePrevPage={conn.prevPage}
-      settingsOpen={settingsOpen}
       onSettingsOpenChange={setSettingsOpen}
-      appSettings={appSettings}
-      onAppSettingsChange={(next) => {
-        setAppSettings(next);
-        saveSettings(next);
-      }}
       update={update}
     />
   );

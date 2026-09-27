@@ -56,6 +56,20 @@ const savedServerStyle: CSSProperties = {
   fontFamily: monoFont,
 };
 const cancelStyle: CSSProperties = { border: "none", background: "transparent", color: colors.textMuted, fontSize: 14, cursor: "pointer", padding: 8 };
+const settingsButtonStyle: CSSProperties = {
+  position: "fixed",
+  top: "max(8px, env(safe-area-inset-top, 0px))",
+  right: "max(8px, env(safe-area-inset-right, 0px))",
+  width: 44,
+  height: 44,
+  border: "none",
+  background: "transparent",
+  color: colors.textMuted,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 const connectingStyle: CSSProperties = { color: colors.textMuted, fontSize: 12 };
 const retryingStyle: CSSProperties = { color: colors.danger, fontSize: 12 };
 const pinInputStyle: CSSProperties = {
@@ -92,16 +106,36 @@ interface ConnectScreenProps {
   /** The server's own text for a refused pairing attempt (wrong PIN, blocked, pairing closed) — see
    * ConnectionEvents.onPairingError. Never set for the initial "not paired yet" state. */
   pairingError?: string | null;
+  /** Lets the person skip pairing and go straight to Settings (e.g. to check something before pairing to a
+   * server) — omitted for the "add a second server" flow, which is already past first setup. */
+  onOpenSettings?: () => void;
 }
 
 /** Host entry, saved servers and QR scan; switches to the PIN prompt when the server asks to pair. */
-export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitPin, onScanQr, servers, onPickServer, onCancel, pairingError }: ConnectScreenProps) {
+export function ConnectScreen({
+  host,
+  status,
+  onHostChange,
+  onConnect,
+  onSubmitPin,
+  onScanQr,
+  servers,
+  onPickServer,
+  onCancel,
+  pairingError,
+  onOpenSettings,
+}: ConnectScreenProps) {
   const [pin, setPin] = useState("");
   const pairing = status === "pairing_required";
   const pinReady = pin.length === PIN_LENGTH;
 
   return (
     <div style={screenStyle}>
+      {onOpenSettings && (
+        <button onClick={onOpenSettings} aria-label={t("settings.title")} style={settingsButtonStyle}>
+          <CloseIcon />
+        </button>
+      )}
       <h1 style={titleStyle}>Macro Grid</h1>
 
       {!pairing && (
@@ -159,5 +193,13 @@ export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitP
         </>
       )}
     </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }

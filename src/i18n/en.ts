@@ -23,6 +23,10 @@ export const en: Record<DictKey, string | ((...args: string[]) => string)> = {
   "connect.retrying": "Connection lost, retrying…",
   "connect.pairHint": "This device is not paired yet. Open \"Pairing\" in the Macro Grid editor on your computer and enter the 6-digit PIN shown there.",
   "connect.pair": "Pair",
+  "pairing.wrongPin": "Wrong PIN. Enter the PIN shown in the Pairing window of the Macro Grid editor on the computer.",
+  "pairing.closed": "Pairing is closed. Open the Pairing window in the Macro Grid editor on the computer, then enter the PIN shown there.",
+  "pairing.notPaired": "Pairing is required. Open the Pairing window in the Macro Grid editor on the computer and enter the PIN shown there.",
+  "pairing.lockedOut": (seconds: string) => `Too many wrong PINs. Try again in ${seconds} seconds.`,
 
   "badge.connecting": "Connecting…",
   "badge.offlineCached": "Offline · cached",

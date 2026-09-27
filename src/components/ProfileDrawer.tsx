@@ -193,15 +193,13 @@ export function ProfileDrawer({
             <button onClick={() => onPickServer(h)} style={serverRowStyle(h === activeHost)}>
               {h}
             </button>
-            {h !== activeHost && (
-              <button
-                onClick={() => window.confirm(t("drawer.forget.confirm", h)) && onForgetServer(h)}
-                aria-label={t("drawer.forget.label", h)}
-                style={forgetStyle}
-              >
-                ×
-              </button>
-            )}
+            <button
+              onClick={() => window.confirm(t("drawer.forget.confirm", h)) && onForgetServer(h)}
+              aria-label={t("drawer.forget.label", h)}
+              style={forgetStyle}
+            >
+              ×
+            </button>
           </div>
         ))}
         <button onClick={onAddServer} style={addServerStyle}>

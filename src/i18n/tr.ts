@@ -21,6 +21,10 @@ export const tr = {
   "connect.retrying": "Bağlantı koptu, yeniden deneniyor…",
   "connect.pairHint": "Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\"ye tıkla ve orada gösterilen 6 haneli PIN'i buraya gir.",
   "connect.pair": "Eşleştir",
+  "pairing.wrongPin": "Yanlış PIN. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresinde gösterilen PIN'i gir.",
+  "pairing.closed": "Eşleştirme kapalı. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresini aç, sonra orada gösterilen PIN'i gir.",
+  "pairing.notPaired": "Eşleştirme gerekiyor. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresini aç ve orada gösterilen PIN'i gir.",
+  "pairing.lockedOut": (seconds: string) => `Çok fazla yanlış PIN denendi. ${seconds} saniye sonra tekrar dene.`,
 
   "badge.connecting": "Bağlanıyor…",
   "badge.offlineCached": "Çevrimdışı · önbellek",

@@ -1,7 +1,21 @@
 import { useState, type CSSProperties } from "react";
 import { t } from "../i18n";
 import { colors, monoFont, sectionLabelStyle } from "../theme";
-import type { ConnectionStatus } from "../ws/connection";
+import type { ConnectionStatus, PairingError } from "../ws/connection";
+
+/** `locked_out` isn't here — its text is built from the live countdown instead (see the render below). */
+function pairingReasonText(reason: string): string | null {
+  switch (reason) {
+    case "wrong_pin":
+      return t("pairing.wrongPin");
+    case "pairing_closed":
+      return t("pairing.closed");
+    case "not_paired":
+      return t("pairing.notPaired");
+    default:
+      return null;
+  }
+}
 
 const PIN_LENGTH = 6;
 
@@ -103,9 +117,11 @@ interface ConnectScreenProps {
   servers: string[];
   onPickServer: (host: string) => void;
   onCancel?: () => void;
-  /** The server's own text for a refused pairing attempt (wrong PIN, blocked, pairing closed) — see
-   * ConnectionEvents.onPairingError. Never set for the initial "not paired yet" state. */
-  pairingError?: string | null;
+  /** A refused pairing attempt (wrong PIN, blocked, pairing closed) — see ConnectionEvents.onPairingError.
+   * Never set for the initial "not paired yet" state. */
+  pairingError?: PairingError | null;
+  /** Ticks down once a second while `pairingError.reason === "locked_out"`; null the rest of the time. */
+  pairingRetrySeconds?: number | null;
   /** Lets the person skip pairing and go straight to Settings (e.g. to check something before pairing to a
    * server) — omitted for the "add a second server" flow, which is already past first setup. */
   onOpenSettings?: () => void;
@@ -123,6 +139,7 @@ export function ConnectScreen({
   onPickServer,
   onCancel,
   pairingError,
+  pairingRetrySeconds,
   onOpenSettings,
 }: ConnectScreenProps) {
   const [pin, setPin] = useState("");
@@ -145,7 +162,7 @@ export function ConnectScreen({
             value={host}
             onChange={(e) => onHostChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onConnect()}
-            placeholder="192.168.1.20:9820"
+            placeholder="192.168.1.20"
             style={hostInputStyle}
           />
           <button onClick={onConnect} style={primaryButtonStyle}>
@@ -177,7 +194,13 @@ export function ConnectScreen({
       {pairing && (
         <>
           <p style={pairHintStyle}>{t("connect.pairHint")}</p>
-          {pairingError && <p style={pairErrorStyle}>{pairingError}</p>}
+          {pairingError && (
+            <p style={pairErrorStyle}>
+              {pairingError.reason === "locked_out" && pairingRetrySeconds != null
+                ? t("pairing.lockedOut", String(pairingRetrySeconds))
+                : (pairingReasonText(pairingError.reason) ?? pairingError.message)}
+            </p>
+          )}
           <input
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}

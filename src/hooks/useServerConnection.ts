@@ -7,7 +7,7 @@ import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys"
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
-import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type ProfileSummary } from "../ws/connection";
+import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
 
 /** A server whose version does not fit this app: what to tell the person, with the versions involved. */
@@ -51,7 +51,11 @@ export function useServerConnection() {
   const [autoSwitch, setAutoSwitch] = useState<AutoSwitchInfo | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [versionNotice, setVersionNotice] = useState<VersionNotice | null>(null);
-  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingError, setPairingError] = useState<PairingError | null>(null);
+  /** Ticks down once a second while `pairingError.retryAfterSeconds` is set; null the rest of the time. A
+   * fresh `pairingError` object (a new lockout after the first one expired) always restarts it, since the
+   * effect below re-runs on referential change, not just on the number's value. */
+  const [pairingRetrySeconds, setPairingRetrySeconds] = useState<number | null>(null);
 
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
@@ -60,6 +64,18 @@ export function useServerConnection() {
   /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
    * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
   const pendingQrPinRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pairingError?.retryAfterSeconds == null) {
+      setPairingRetrySeconds(null);
+      return;
+    }
+    setPairingRetrySeconds(pairingError.retryAfterSeconds);
+    const interval = setInterval(() => {
+      setPairingRetrySeconds((prev) => (prev != null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pairingError]);
 
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
@@ -175,7 +191,29 @@ export function useServerConnection() {
     [connect],
   );
 
-  const forget = useCallback((host: string) => setServers(forgetServer(host)), []);
+  /** Forgetting the server currently on screen also disconnects and clears it back to the connect
+   * screen's empty state — otherwise the live deck would keep working off a token that storage no
+   * longer has, and a relaunch would still try to reconnect to a host the person just removed. */
+  const forget = useCallback(
+    (host: string) => {
+      setServers(forgetServer(host));
+      if (host !== activeHost) return;
+      connectionRef.current?.disconnect();
+      connectionRef.current = null;
+      removeItem(HOST_KEY);
+      setActiveHost("");
+      setStatus("disconnected");
+      setUsingCache(false);
+      setProfile(null);
+      setPageId(null);
+      setStates({});
+      setProfiles([]);
+      setAutoSwitch(null);
+      setPairingError(null);
+      setVersionNotice(null);
+    },
+    [activeHost],
+  );
 
   return {
     activeHost,
@@ -193,6 +231,7 @@ export function useServerConnection() {
     versionNotice,
     dismissVersionNotice: () => setVersionNotice(null),
     pairingError,
+    pairingRetrySeconds,
     connect,
     connectScanned,
     forget,

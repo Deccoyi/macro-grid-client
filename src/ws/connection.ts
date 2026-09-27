@@ -39,6 +39,19 @@ interface WelcomeData {
 interface ErrorData {
   code: string;
   message: string;
+  /** Only for `pairing_required`: always one of "wrong_pin" | "locked_out" | "pairing_closed" | "not_paired"
+   * (see ClientHub.PairingMessage server-side), a string in case a future server adds a case this build
+   * doesn't know yet — the caller falls back to `message` for anything it doesn't recognize. */
+  reason?: string;
+  /** Only for `reason === "locked_out"`. */
+  retryAfterSeconds?: number;
+}
+
+/** What a refused pairing attempt looks like once decoded — see ConnectionEvents.onPairingError. */
+export interface PairingError {
+  reason: string;
+  message: string;
+  retryAfterSeconds?: number;
 }
 
 export interface ProfileSummary {
@@ -85,9 +98,8 @@ export interface ConnectionEvents {
    * so the caller can tell the person to update the computer or the app. Called on every welcome, `ok` included. Optional. */
   onServerVersion?: (compat: ServerCompat, serverVersion: string, required: string) => void;
   /** A pairing attempt was refused — wrong PIN, blocked after too many wrong PINs, or pairing not open on
-   * the computer. `message` is the server's own text (see ClientHub.PairingMessage), already specific enough
-   * to show as-is; not called for the initial "not paired yet" state before any PIN was ever submitted. */
-  onPairingError: (message: string) => void;
+   * the computer. Not called for the initial "not paired yet" state before any PIN was ever submitted. */
+  onPairingError: (error: PairingError) => void;
 }
 
 const MAX_BACKOFF_MS = 10_000;
@@ -275,7 +287,9 @@ export class ServerConnection {
         const data = envelope.data as ErrorData;
         if (data.code === "pairing_required") {
           this.events.onStatusChange("pairing_required");
-          if (this.attemptedPin) this.events.onPairingError(data.message);
+          if (this.attemptedPin) {
+          this.events.onPairingError({ reason: data.reason ?? "wrong_pin", message: data.message, retryAfterSeconds: data.retryAfterSeconds });
+        }
         } else if (data.code === "action_failed") this.events.onActionError(data.message);
         break;
       }

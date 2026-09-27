@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { InfoToast } from "./components/InfoToast";
 import { UpdateScreen } from "./components/UpdateScreen";
+import { DEFAULT_SERVER_PORT } from "./constants";
 import { useKeepAwake } from "./hooks/useKeepAwake";
 import { useLanguage } from "./hooks/useLanguage";
 import { useServerConnection } from "./hooks/useServerConnection";
@@ -13,6 +14,12 @@ import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
 import { HOST_KEY } from "./storage/keys";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { readText } from "./storage/storage";
+
+/** Adds the default port when the person typed just an IP address, skipping the ":port" part. A saved
+ * server or a scanned QR always already has one and is returned unchanged. */
+function withDefaultPort(host: string): string {
+  return host.includes(":") ? host : `${host}:${DEFAULT_SERVER_PORT}`;
+}
 
 /** Chooses between the QR scanner, the connect screen and the deck, and holds the UI-only state (panels, form text). */
 export function App() {
@@ -100,12 +107,13 @@ export function App() {
         host={host}
         status={conn.status}
         onHostChange={setHost}
-        onConnect={() => host.trim() && connect(host.trim())}
+        onConnect={() => host.trim() && connect(withDefaultPort(host.trim()))}
         onSubmitPin={conn.retryWithPin}
         onScanQr={() => setScanning(true)}
         servers={conn.servers}
         onPickServer={connect}
         pairingError={conn.pairingError}
+        pairingRetrySeconds={conn.pairingRetrySeconds}
         onCancel={
           addingServer
             ? () => {
@@ -136,7 +144,10 @@ export function App() {
         setDrawerOpen(false);
         if (h !== conn.activeHost) connect(h);
       }}
-      onForgetServer={conn.forget}
+      onForgetServer={(h) => {
+        conn.forget(h);
+        if (h === conn.activeHost) setHost("");
+      }}
       onAddServer={() => {
         setDrawerOpen(false);
         setHost("");

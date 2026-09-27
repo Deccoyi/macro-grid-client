@@ -83,6 +83,10 @@ export interface ConnectionEvents {
   /** The server said hello: how its version relates to the Macro Grid version this app needs (`macroGrid` in package.json),
    * so the caller can tell the person to update the computer or the app. Called on every welcome, `ok` included. Optional. */
   onServerVersion?: (compat: ServerCompat, serverVersion: string, required: string) => void;
+  /** A pairing attempt was refused — wrong PIN, blocked after too many wrong PINs, or pairing not open on
+   * the computer. `message` is the server's own text (see ClientHub.PairingMessage), already specific enough
+   * to show as-is; not called for the initial "not paired yet" state before any PIN was ever submitted. */
+  onPairingError: (message: string) => void;
 }
 
 const MAX_BACKOFF_MS = 10_000;
@@ -115,6 +119,10 @@ export class ServerConnection {
   /** The layout as the server last described it (still with `asset:` references), the base a patch applies to. */
   private cacheProfile: Profile | null = null;
   private assetWaiters = new Map<string, Array<() => void>>();
+  /** False until a PIN is actually submitted, so the very first automatic hello (sent with no PIN, before
+   * the person has done anything) never fires onPairingError — ConnectScreen's own hint already covers that
+   * case. Stays true afterward: every pairing_required from here on is a real wrong/blocked/closed attempt. */
+  private attemptedPin = false;
 
   constructor(
     private readonly host: string,
@@ -143,6 +151,7 @@ export class ServerConnection {
 
   /** Retries `hello` on the still-open socket with a PIN the user just typed, after the server asked for one. */
   retryWithPin(pin: string): void {
+    this.attemptedPin = true;
     this.sendHello(pin);
   }
 
@@ -253,8 +262,10 @@ export class ServerConnection {
       }
       case "error": {
         const data = envelope.data as ErrorData;
-        if (data.code === "pairing_required") this.events.onStatusChange("pairing_required");
-        else if (data.code === "action_failed") this.events.onActionError(data.message);
+        if (data.code === "pairing_required") {
+          this.events.onStatusChange("pairing_required");
+          if (this.attemptedPin) this.events.onPairingError(data.message);
+        } else if (data.code === "action_failed") this.events.onActionError(data.message);
         break;
       }
       default:

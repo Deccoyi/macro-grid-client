@@ -51,6 +51,7 @@ export function useServerConnection() {
   const [autoSwitch, setAutoSwitch] = useState<AutoSwitchInfo | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [versionNotice, setVersionNotice] = useState<VersionNotice | null>(null);
+  const [pairingError, setPairingError] = useState<string | null>(null);
 
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
@@ -68,6 +69,7 @@ export function useServerConnection() {
     setProfiles([]);
     setAutoSwitch(null);
     setVersionNotice(null);
+    setPairingError(null);
     const cached = loadLayoutCache(targetHost);
     cacheProfileRef.current = cached?.profile ?? null;
     setProfile(resolveCachedProfile(cached));
@@ -122,6 +124,7 @@ export function useServerConnection() {
         setActionError(message);
         actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
       },
+      onPairingError: setPairingError,
     });
     connectionRef.current = connection;
     connection.connect();
@@ -171,12 +174,16 @@ export function useServerConnection() {
     actionError,
     versionNotice,
     dismissVersionNotice: () => setVersionNotice(null),
+    pairingError,
     connect,
     connectScanned,
     forget,
     /** Sends a protocol message on the live socket (dropped while disconnected). */
     send: (type: string, data?: unknown) => connectionRef.current?.send(type, data),
-    retryWithPin: (pin: string) => connectionRef.current?.retryWithPin(pin),
+    retryWithPin: (pin: string) => {
+      setPairingError(null);
+      connectionRef.current?.retryWithPin(pin);
+    },
     changeProfile: (profileId: string) => connectionRef.current?.changeProfile(profileId),
     setProfileLock: (locked: boolean) => connectionRef.current?.setProfileLock(locked),
     nextPage: () => connectionRef.current?.nextPage(),

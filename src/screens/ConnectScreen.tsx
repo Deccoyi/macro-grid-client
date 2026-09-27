@@ -23,6 +23,7 @@ const screenStyle: CSSProperties = {
 const titleStyle: CSSProperties = { fontSize: 20, margin: 0 };
 const hintStyle: CSSProperties = { color: colors.textMuted, fontSize: 13, textAlign: "center", margin: 0 };
 const pairHintStyle: CSSProperties = { ...hintStyle, maxWidth: 320 };
+const pairErrorStyle: CSSProperties = { color: colors.danger, fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 };
 const hostInputStyle: CSSProperties = {
   width: "100%",
   maxWidth: 320,
@@ -88,10 +89,13 @@ interface ConnectScreenProps {
   servers: string[];
   onPickServer: (host: string) => void;
   onCancel?: () => void;
+  /** The server's own text for a refused pairing attempt (wrong PIN, blocked, pairing closed) — see
+   * ConnectionEvents.onPairingError. Never set for the initial "not paired yet" state. */
+  pairingError?: string | null;
 }
 
 /** Host entry, saved servers and QR scan; switches to the PIN prompt when the server asks to pair. */
-export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitPin, onScanQr, servers, onPickServer, onCancel }: ConnectScreenProps) {
+export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitPin, onScanQr, servers, onPickServer, onCancel, pairingError }: ConnectScreenProps) {
   const [pin, setPin] = useState("");
   const pairing = status === "pairing_required";
   const pinReady = pin.length === PIN_LENGTH;
@@ -139,6 +143,7 @@ export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitP
       {pairing && (
         <>
           <p style={pairHintStyle}>{t("connect.pairHint")}</p>
+          {pairingError && <p style={pairErrorStyle}>{pairingError}</p>}
           <input
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}

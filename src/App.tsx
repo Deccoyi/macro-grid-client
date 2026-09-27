@@ -103,6 +103,7 @@ export function App() {
         onScanQr={() => setScanning(true)}
         servers={conn.servers}
         onPickServer={connect}
+        pairingError={conn.pairingError}
         onCancel={
           addingServer
             ? () => {

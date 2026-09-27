@@ -6,6 +6,9 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 ### New
 - **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
 
+### Fixed
+- **Wrong PIN:** Entering a wrong pairing PIN now shows why it didn't work (wrong PIN, too many tries, or pairing closed on the computer) instead of doing nothing.
+
 ## 0.2.0 - 2026-09-25
 ### New
 - **Updates:** The app tells you when a new version is available, shows what changed, and installs it after one tap. Your pairing is kept. You can turn the check off in Settings.

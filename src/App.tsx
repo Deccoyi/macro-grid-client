@@ -54,7 +54,7 @@ export function App() {
       setScanning(false);
       setHost(result.host);
       setAddingServer(false);
-      connectScanned(result.host, result.pin ?? null);
+      connectScanned(result.host, result.pin ?? null, result.tlsPort, result.fingerprint);
     },
     [connectScanned],
   );

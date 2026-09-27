@@ -1,4 +1,5 @@
 import type { Profile, WidgetState } from "@macro/renderer";
+import { PinnedWebSocket, pinnedSocketAvailable } from "../native/pinnedSocket";
 import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
 import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
@@ -101,7 +102,7 @@ const ASSET_WAIT_MS = 5_000;
  * one piece of client resilience the plan calls out explicitly (Stage 5).
  */
 export class ServerConnection {
-  private socket: WebSocket | null = null;
+  private socket: WebSocket | PinnedWebSocket | null = null;
   private backoffMs = 500;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,6 +130,10 @@ export class ServerConnection {
     private readonly deviceId: string,
     private readonly deviceName: string,
     private token: string | null,
+    /** Set together, from the pairing QR (see QrScanScreen.tsx) — present only when the server's QR
+     * carried a certificate fingerprint, i.e. it offers a TLS listener next to the plain one. */
+    private readonly tlsPort: string | null,
+    private readonly fingerprint: string | null,
     private readonly events: ConnectionEvents,
   ) {}
 
@@ -169,7 +174,13 @@ export class ServerConnection {
   private open(): void {
     if (this.destroyed) return;
     this.events.onStatusChange("connecting");
-    const socket = new WebSocket(`ws://${this.host}/ws`);
+    // A fingerprint from the pairing QR means the server offered a TLS listener; the WebView's own
+    // WebSocket cannot pin a certificate, so that case moves to the native plugin instead. No
+    // fingerprint (an older server, or a QR scanned before it offered one) keeps the plain socket.
+    const socket: WebSocket | PinnedWebSocket =
+      this.tlsPort && this.fingerprint && pinnedSocketAvailable()
+        ? new PinnedWebSocket(`wss://${this.host.split(":")[0]}:${this.tlsPort}/ws`, this.fingerprint)
+        : new WebSocket(`ws://${this.host}/ws`);
     this.socket = socket;
 
     socket.onopen = () => {
@@ -179,7 +190,7 @@ export class ServerConnection {
       this.events.onStatusChange("connected");
     };
 
-    socket.onmessage = (ev) => {
+    socket.onmessage = (ev: { data: string }) => {
       if (this.destroyed) return;
       let envelope: Envelope;
       try {

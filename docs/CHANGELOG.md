@@ -5,6 +5,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 ## Unreleased
 ### New
 - **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
+- **Encrypted connection:** When your computer offers it, the app now connects over an encrypted connection instead of a plain one, pinned to your computer's own certificate. Scan the pairing QR code again to switch an already-paired server to it.
 
 ### Fixed
 - **Wrong PIN:** Entering a wrong pairing PIN now shows why it didn't work (wrong PIN, too many tries, or pairing closed on the computer) instead of doing nothing.

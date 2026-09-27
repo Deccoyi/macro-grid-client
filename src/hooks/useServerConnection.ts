@@ -3,10 +3,10 @@ import type { Profile, WidgetState } from "@macro/renderer";
 import { ACTION_ERROR_MS } from "../constants";
 import { t } from "../i18n";
 import { getDeviceId } from "../storage/deviceId";
-import { HOST_KEY, tokenKey } from "../storage/keys";
+import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys";
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
-import { readText, writeText } from "../storage/storage";
+import { readText, removeItem, writeText } from "../storage/storage";
 import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
 
@@ -76,56 +76,64 @@ export function useServerConnection() {
     setPageId(cached?.pageId ?? null);
     setUsingCache(cached !== null);
 
-    const connection = new ServerConnection(targetHost, getDeviceId(), t("device.name"), readText(tokenKey(targetHost)), {
-      onStatusChange: setStatus,
-      onLayout: (nextProfile, nextPageId, cacheProfile) => {
-        cacheProfileRef.current = cacheProfile;
-        setProfile(nextProfile);
-        setPageId(nextPageId);
-        setStates({});
-        setUsingCache(false);
-        // First layout means hello was accepted — only now is this a real, working server worth remembering.
-        setServers(rememberServer(targetHost));
-        saveLayoutCache(targetHost, cacheProfile, nextPageId);
+    const connection = new ServerConnection(
+      targetHost,
+      getDeviceId(),
+      t("device.name"),
+      readText(tokenKey(targetHost)),
+      readText(tlsPortKey(targetHost)),
+      readText(fingerprintKey(targetHost)),
+      {
+        onStatusChange: setStatus,
+        onLayout: (nextProfile, nextPageId, cacheProfile) => {
+          cacheProfileRef.current = cacheProfile;
+          setProfile(nextProfile);
+          setPageId(nextPageId);
+          setStates({});
+          setUsingCache(false);
+          // First layout means hello was accepted — only now is this a real, working server worth remembering.
+          setServers(rememberServer(targetHost));
+          saveLayoutCache(targetHost, cacheProfile, nextPageId);
+        },
+        onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
+          cacheProfileRef.current = cacheProfile;
+          setProfile(nextProfile);
+          setPageId(nextPageId);
+          // Only the changed widgets lose their live state (the server re-sends it); every other widget keeps
+          // its text, toggle and slider position, so an edit elsewhere on the deck is invisible here.
+          setStates((prev) => omitKeys(prev, changedWidgetIds));
+          setDragValues((prev) => omitKeys(prev, changedWidgetIds));
+          saveLayoutCache(targetHost, cacheProfile, nextPageId);
+        },
+        onPageChange: (nextPageId) => {
+          setPageId(nextPageId);
+          if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
+        },
+        onWidgetState: (state) => {
+          setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
+          if (state.value !== undefined) {
+            setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
+          }
+        },
+        onProfiles: (nextProfiles, nextAutoSwitch) => {
+          setProfiles(nextProfiles);
+          setAutoSwitch(nextAutoSwitch);
+        },
+        onPaired: (token) => writeText(tokenKey(targetHost), token),
+        onServerVersion: (compat, serverVersion, required) =>
+          setVersionNotice((prev) => {
+            if (compat === "ok") return null;
+            // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
+            return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
+          }),
+        onActionError: (message) => {
+          if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
+          setActionError(message);
+          actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
+        },
+        onPairingError: setPairingError,
       },
-      onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
-        cacheProfileRef.current = cacheProfile;
-        setProfile(nextProfile);
-        setPageId(nextPageId);
-        // Only the changed widgets lose their live state (the server re-sends it); every other widget keeps
-        // its text, toggle and slider position, so an edit elsewhere on the deck is invisible here.
-        setStates((prev) => omitKeys(prev, changedWidgetIds));
-        setDragValues((prev) => omitKeys(prev, changedWidgetIds));
-        saveLayoutCache(targetHost, cacheProfile, nextPageId);
-      },
-      onPageChange: (nextPageId) => {
-        setPageId(nextPageId);
-        if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
-      },
-      onWidgetState: (state) => {
-        setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
-        if (state.value !== undefined) {
-          setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
-        }
-      },
-      onProfiles: (nextProfiles, nextAutoSwitch) => {
-        setProfiles(nextProfiles);
-        setAutoSwitch(nextAutoSwitch);
-      },
-      onPaired: (token) => writeText(tokenKey(targetHost), token),
-      onServerVersion: (compat, serverVersion, required) =>
-        setVersionNotice((prev) => {
-          if (compat === "ok") return null;
-          // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
-          return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
-        }),
-      onActionError: (message) => {
-        if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
-        setActionError(message);
-        actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
-      },
-      onPairingError: setPairingError,
-    });
+    );
     connectionRef.current = connection;
     connection.connect();
   }, []);
@@ -148,9 +156,19 @@ export function useServerConnection() {
     }
   }, [status]);
 
-  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one. */
+  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one.
+   * A `tlsPort`/`fingerprint` pair (present only when the server's QR offered one) is persisted before
+   * connecting, since the transport itself needs it — unlike the pairing token, it can't wait for a
+   * successful `hello`. */
   const connectScanned = useCallback(
-    (scannedHost: string, pin: string | null) => {
+    (scannedHost: string, pin: string | null, tlsPort?: string, fingerprint?: string) => {
+      if (tlsPort && fingerprint) {
+        writeText(tlsPortKey(scannedHost), tlsPort);
+        writeText(fingerprintKey(scannedHost), fingerprint);
+      } else {
+        removeItem(tlsPortKey(scannedHost));
+        removeItem(fingerprintKey(scannedHost));
+      }
       pendingQrPinRef.current = pin;
       connect(scannedHost);
     },

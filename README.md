@@ -1,7 +1,7 @@
 # Macro Grid client
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)
+![Status: beta](https://img.shields.io/badge/status-beta-yellow.svg)
 [![CI](https://github.com/Deccoyi/macro-grid-client/actions/workflows/ci.yml/badge.svg)](https://github.com/Deccoyi/macro-grid-client/actions/workflows/ci.yml)
 
 The phone and tablet app for [Macro Grid](https://github.com/Deccoyi/macro-grid). It connects over your local network to the Macro Grid server running

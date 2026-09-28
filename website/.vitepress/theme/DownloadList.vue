@@ -8,14 +8,14 @@ const { lang } = useData()
 const isTr = computed(() => langOf(lang.value) === 'tr')
 const T = {
   en: {
-    alpha: 'alpha', latest: 'Latest release', version: 'Version', released: 'Released', apk: 'Download APK',
+    alpha: 'pre-release', latest: 'Latest release', version: 'Version', released: 'Released', apk: 'Download APK',
     openPage: 'Open the release page', notes: 'Release notes', download: 'Download', onGithub: 'Releases are on GitHub',
     failed: 'The release list could not be loaded right now, or no release has been published yet. You can always get the APK from GitHub.',
     goGithub: 'Go to GitHub Releases', previous: 'Previous versions',
     scan: 'Scan with your phone to download the APK', qrAlt: 'QR code of the APK download link',
   },
   tr: {
-    alpha: 'alfa', latest: 'Son sürüm', version: 'Sürüm', released: 'Yayın tarihi:', apk: 'APK indir',
+    alpha: 'ön sürüm', latest: 'Son sürüm', version: 'Sürüm', released: 'Yayın tarihi:', apk: 'APK indir',
     openPage: 'Sürüm sayfasını aç', notes: 'Sürüm notları', download: 'İndir', onGithub: "Sürümler GitHub'da",
     failed: "Sürüm listesi şu anda yüklenemedi ya da henüz bir sürüm yayımlanmadı. APK'yı her zaman GitHub'dan edinebilirsiniz.",
     goGithub: "GitHub Sürümleri'ne git", previous: 'Önceki sürümler',

@@ -30,7 +30,7 @@ features:
 
 <div class="home-note">
 
-**Alpha software.** The app needs the [Macro Grid server](https://deccoyi.github.io/macro-grid/) running on a Windows PC on the same network; without it the app only shows its connect screen. There is also a browser deck if you would rather not install anything. See [Requirements](/requirements).
+**Beta software.** The app needs the [Macro Grid server](https://deccoyi.github.io/macro-grid/) running on a Windows PC on the same network; without it the app only shows its connect screen. There is also a browser deck if you would rather not install anything. See [Requirements](/requirements).
 
 </div>
 

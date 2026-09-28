@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { IconPosition } from "../types";
+import { isSafeImageUrl } from "./sanitizeImageUrl";
 
 export interface ButtonContentProps {
   text: string;
@@ -34,7 +35,7 @@ export function ButtonContent({ text, icon, iconSize = 28, iconPosition = "top" 
   return (
     <div className="ms-content">
       <div className="ms-content-inner" style={icon ? { flexDirection: FLEX_DIRECTION[iconPosition], gap: row ? 8 : 4 } : undefined}>
-        {icon && <img className="ms-icon" src={icon} alt="" aria-hidden="true" style={{ width: iconSize, height: iconSize, margin: 0, flex: "none" }} />}
+        {icon && isSafeImageUrl(icon) && <img className="ms-icon" src={icon} alt="" aria-hidden="true" style={{ width: iconSize, height: iconSize, margin: 0, flex: "none" }} />}
         {text && <span className="ms-text">{text}</span>}
       </div>
     </div>

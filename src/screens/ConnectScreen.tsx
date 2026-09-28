@@ -1,7 +1,21 @@
 import { useState, type CSSProperties } from "react";
 import { t } from "../i18n";
 import { colors, monoFont, sectionLabelStyle } from "../theme";
-import type { ConnectionStatus } from "../ws/connection";
+import type { ConnectionStatus, PairingError } from "../ws/connection";
+
+/** `locked_out` isn't here — its text is built from the live countdown instead (see the render below). */
+function pairingReasonText(reason: string): string | null {
+  switch (reason) {
+    case "wrong_pin":
+      return t("pairing.wrongPin");
+    case "pairing_closed":
+      return t("pairing.closed");
+    case "not_paired":
+      return t("pairing.notPaired");
+    default:
+      return null;
+  }
+}
 
 const PIN_LENGTH = 6;
 
@@ -23,6 +37,7 @@ const screenStyle: CSSProperties = {
 const titleStyle: CSSProperties = { fontSize: 20, margin: 0 };
 const hintStyle: CSSProperties = { color: colors.textMuted, fontSize: 13, textAlign: "center", margin: 0 };
 const pairHintStyle: CSSProperties = { ...hintStyle, maxWidth: 320 };
+const pairErrorStyle: CSSProperties = { color: colors.danger, fontSize: 13, textAlign: "center", margin: 0, maxWidth: 320 };
 const hostInputStyle: CSSProperties = {
   width: "100%",
   maxWidth: 320,
@@ -55,6 +70,20 @@ const savedServerStyle: CSSProperties = {
   fontFamily: monoFont,
 };
 const cancelStyle: CSSProperties = { border: "none", background: "transparent", color: colors.textMuted, fontSize: 14, cursor: "pointer", padding: 8 };
+const settingsButtonStyle: CSSProperties = {
+  position: "fixed",
+  top: "max(8px, env(safe-area-inset-top, 0px))",
+  right: "max(8px, env(safe-area-inset-right, 0px))",
+  width: 44,
+  height: 44,
+  border: "none",
+  background: "transparent",
+  color: colors.textMuted,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 const connectingStyle: CSSProperties = { color: colors.textMuted, fontSize: 12 };
 const retryingStyle: CSSProperties = { color: colors.danger, fontSize: 12 };
 const pinInputStyle: CSSProperties = {
@@ -88,16 +117,42 @@ interface ConnectScreenProps {
   servers: string[];
   onPickServer: (host: string) => void;
   onCancel?: () => void;
+  /** A refused pairing attempt (wrong PIN, blocked, pairing closed) — see ConnectionEvents.onPairingError.
+   * Never set for the initial "not paired yet" state. */
+  pairingError?: PairingError | null;
+  /** Ticks down once a second while `pairingError.reason === "locked_out"`; null the rest of the time. */
+  pairingRetrySeconds?: number | null;
+  /** Lets the person skip pairing and go straight to Settings (e.g. to check something before pairing to a
+   * server) — omitted for the "add a second server" flow, which is already past first setup. */
+  onOpenSettings?: () => void;
 }
 
 /** Host entry, saved servers and QR scan; switches to the PIN prompt when the server asks to pair. */
-export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitPin, onScanQr, servers, onPickServer, onCancel }: ConnectScreenProps) {
+export function ConnectScreen({
+  host,
+  status,
+  onHostChange,
+  onConnect,
+  onSubmitPin,
+  onScanQr,
+  servers,
+  onPickServer,
+  onCancel,
+  pairingError,
+  pairingRetrySeconds,
+  onOpenSettings,
+}: ConnectScreenProps) {
   const [pin, setPin] = useState("");
   const pairing = status === "pairing_required";
   const pinReady = pin.length === PIN_LENGTH;
 
   return (
     <div style={screenStyle}>
+      {onOpenSettings && (
+        <button onClick={onOpenSettings} aria-label={t("settings.title")} style={settingsButtonStyle}>
+          <CloseIcon />
+        </button>
+      )}
       <h1 style={titleStyle}>Macro Grid</h1>
 
       {!pairing && (
@@ -107,7 +162,7 @@ export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitP
             value={host}
             onChange={(e) => onHostChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onConnect()}
-            placeholder="192.168.1.20:9820"
+            placeholder="192.168.1.20"
             style={hostInputStyle}
           />
           <button onClick={onConnect} style={primaryButtonStyle}>
@@ -139,6 +194,13 @@ export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitP
       {pairing && (
         <>
           <p style={pairHintStyle}>{t("connect.pairHint")}</p>
+          {pairingError && (
+            <p style={pairErrorStyle}>
+              {pairingError.reason === "locked_out" && pairingRetrySeconds != null
+                ? t("pairing.lockedOut", String(pairingRetrySeconds))
+                : (pairingReasonText(pairingError.reason) ?? pairingError.message)}
+            </p>
+          )}
           <input
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
@@ -154,5 +216,13 @@ export function ConnectScreen({ host, status, onHostChange, onConnect, onSubmitP
         </>
       )}
     </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }

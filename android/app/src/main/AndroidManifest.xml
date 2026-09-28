@@ -58,4 +58,7 @@
     <!-- Self-update: read whether the network is Wi-Fi or metered, and hand a downloaded APK to the installer. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Self-update, Android 12+ (see UpdaterPlugin.commitSession): required, on top of being the installer of
+         record, for setRequireUserAction(USER_ACTION_NOT_REQUIRED) to actually skip the confirmation dialog. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 </manifest>

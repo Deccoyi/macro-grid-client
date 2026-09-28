@@ -1,7 +1,9 @@
 import type { Profile, WidgetState } from "@macro/renderer";
+import { PinnedWebSocket, pinnedSocketAvailable } from "../native/pinnedSocket";
 import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
-import { version as CLIENT_VERSION } from "../../package.json";
+import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
+import { checkServerVersion, type ServerCompat } from "./serverCompat";
 
 /**
  * Every frame is { type, data }, matching MacroGrid.Protocol.Envelope server-side. This client
@@ -37,6 +39,19 @@ interface WelcomeData {
 interface ErrorData {
   code: string;
   message: string;
+  /** Only for `pairing_required`: always one of "wrong_pin" | "locked_out" | "pairing_closed" | "not_paired"
+   * (see ClientHub.PairingMessage server-side), a string in case a future server adds a case this build
+   * doesn't know yet — the caller falls back to `message` for anything it doesn't recognize. */
+  reason?: string;
+  /** Only for `reason === "locked_out"`. */
+  retryAfterSeconds?: number;
+}
+
+/** What a refused pairing attempt looks like once decoded — see ConnectionEvents.onPairingError. */
+export interface PairingError {
+  reason: string;
+  message: string;
+  retryAfterSeconds?: number;
 }
 
 export interface ProfileSummary {
@@ -79,6 +94,12 @@ export interface ConnectionEvents {
   /** A widget's action failed server-side (e.g. a button pointed at a since-deleted OBS scene) —
    * surfaced as a toast so a stale binding is never a silent no-op on the device that pressed it. */
   onActionError: (message: string) => void;
+  /** The server said hello: how its version relates to the Macro Grid version this app needs (`macroGrid` in package.json),
+   * so the caller can tell the person to update the computer or the app. Called on every welcome, `ok` included. Optional. */
+  onServerVersion?: (compat: ServerCompat, serverVersion: string, required: string) => void;
+  /** A pairing attempt was refused — wrong PIN, blocked after too many wrong PINs, or pairing not open on
+   * the computer. Not called for the initial "not paired yet" state before any PIN was ever submitted. */
+  onPairingError: (error: PairingError) => void;
 }
 
 const MAX_BACKOFF_MS = 10_000;
@@ -93,7 +114,7 @@ const ASSET_WAIT_MS = 5_000;
  * one piece of client resilience the plan calls out explicitly (Stage 5).
  */
 export class ServerConnection {
-  private socket: WebSocket | null = null;
+  private socket: WebSocket | PinnedWebSocket | null = null;
   private backoffMs = 500;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -111,12 +132,20 @@ export class ServerConnection {
   /** The layout as the server last described it (still with `asset:` references), the base a patch applies to. */
   private cacheProfile: Profile | null = null;
   private assetWaiters = new Map<string, Array<() => void>>();
+  /** False until a PIN is actually submitted, so the very first automatic hello (sent with no PIN, before
+   * the person has done anything) never fires onPairingError — ConnectScreen's own hint already covers that
+   * case. Stays true afterward: every pairing_required from here on is a real wrong/blocked/closed attempt. */
+  private attemptedPin = false;
 
   constructor(
     private readonly host: string,
     private readonly deviceId: string,
     private readonly deviceName: string,
     private token: string | null,
+    /** Set together, from the pairing QR (see QrScanScreen.tsx) — present only when the server's QR
+     * carried a certificate fingerprint, i.e. it offers a TLS listener next to the plain one. */
+    private readonly tlsPort: string | null,
+    private readonly fingerprint: string | null,
     private readonly events: ConnectionEvents,
   ) {}
 
@@ -139,6 +168,7 @@ export class ServerConnection {
 
   /** Retries `hello` on the still-open socket with a PIN the user just typed, after the server asked for one. */
   retryWithPin(pin: string): void {
+    this.attemptedPin = true;
     this.sendHello(pin);
   }
 
@@ -156,7 +186,13 @@ export class ServerConnection {
   private open(): void {
     if (this.destroyed) return;
     this.events.onStatusChange("connecting");
-    const socket = new WebSocket(`ws://${this.host}/ws`);
+    // A fingerprint from the pairing QR means the server offered a TLS listener; the WebView's own
+    // WebSocket cannot pin a certificate, so that case moves to the native plugin instead. No
+    // fingerprint (an older server, or a QR scanned before it offered one) keeps the plain socket.
+    const socket: WebSocket | PinnedWebSocket =
+      this.tlsPort && this.fingerprint && pinnedSocketAvailable()
+        ? new PinnedWebSocket(`wss://${this.host.split(":")[0]}:${this.tlsPort}/ws`, this.fingerprint)
+        : new WebSocket(`ws://${this.host}/ws`);
     this.socket = socket;
 
     socket.onopen = () => {
@@ -166,7 +202,7 @@ export class ServerConnection {
       this.events.onStatusChange("connected");
     };
 
-    socket.onmessage = (ev) => {
+    socket.onmessage = (ev: { data: string }) => {
       if (this.destroyed) return;
       let envelope: Envelope;
       try {
@@ -205,6 +241,7 @@ export class ServerConnection {
         // after a "pairing_required" error, which otherwise leaves the status stuck on that value
         // forever even though the connection is now fully working.
         this.events.onStatusChange("connected");
+        this.events.onServerVersion?.(checkServerVersion(data.serverVersion, REQUIRED_MACRO_GRID), data.serverVersion, REQUIRED_MACRO_GRID);
         break;
       }
       case "layout.full": {
@@ -248,8 +285,12 @@ export class ServerConnection {
       }
       case "error": {
         const data = envelope.data as ErrorData;
-        if (data.code === "pairing_required") this.events.onStatusChange("pairing_required");
-        else if (data.code === "action_failed") this.events.onActionError(data.message);
+        if (data.code === "pairing_required") {
+          this.events.onStatusChange("pairing_required");
+          if (this.attemptedPin) {
+          this.events.onPairingError({ reason: data.reason ?? "wrong_pin", message: data.message, retryAfterSeconds: data.retryAfterSeconds });
+        }
+        } else if (data.code === "action_failed") this.events.onActionError(data.message);
         break;
       }
       default:

@@ -21,6 +21,10 @@ export const tr = {
   "connect.retrying": "Bağlantı koptu, yeniden deneniyor…",
   "connect.pairHint": "Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\"ye tıkla ve orada gösterilen 6 haneli PIN'i buraya gir.",
   "connect.pair": "Eşleştir",
+  "pairing.wrongPin": "Yanlış PIN. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresinde gösterilen PIN'i gir.",
+  "pairing.closed": "Eşleştirme kapalı. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresini aç, sonra orada gösterilen PIN'i gir.",
+  "pairing.notPaired": "Eşleştirme gerekiyor. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\" penceresini aç ve orada gösterilen PIN'i gir.",
+  "pairing.lockedOut": (seconds: string) => `Çok fazla yanlış PIN denendi. ${seconds} saniye sonra tekrar dene.`,
 
   "badge.connecting": "Bağlanıyor…",
   "badge.offlineCached": "Çevrimdışı · önbellek",
@@ -103,6 +107,8 @@ export const tr = {
   "update.error.incompatible": "Bu sürüm kurulu uygulamanın üstüne kurulamadı. Sürüm sayfasındaki dosyayı elle kurmayı dene.",
   "update.error.failed": "Güncelleme kurulamadı.",
   "update.updated": (v: string) => `Macro Grid ${v} sürümüne güncellendi.`,
+  "version.serverTooOld": (server: string, required: string) => `Bu uygulama bilgisayarda Macro Grid ${required} veya daha yenisini gerektiriyor, bilgisayarda ${server} var. Bilgisayardaki Macro Grid'i güncelleyin.`,
+  "version.appTooOld": (server: string) => `Bilgisayardaki Macro Grid ${server}, bu uygulamanın desteklediğinden daha yeni. Uygulamayı güncelleyin.`,
 
   "settings.close": "Kapat",
 } satisfies Record<string, string | ((...args: string[]) => string)>;

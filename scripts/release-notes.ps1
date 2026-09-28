@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Prints the release notes of a client release: the section of docs/CHANGELOG.md for the version in the tag, plus a fixed footer.
+  Prints the release notes of a client release: the section of docs/CHANGELOG.md for the version in the tag, plus a "works with Macro Grid" line and a fixed footer.
 
 .DESCRIPTION
   The phone app's update screen shows the body of each GitHub release, so the body has to be the short public notes and not a placeholder.
@@ -34,7 +34,13 @@ if ($start -lt 0) {
     $body = ($section -join "`n").Trim()
 }
 
+# Which Macro Grid the app needs comes from package.json ("macroGrid"), the same field the app checks at connect time.
+$macroGrid = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).macroGrid
 $body
+if ($macroGrid) {
+    ""
+    "Works with Macro Grid $macroGrid or newer on your computer."
+}
 if ($Footer -and (Test-Path $Footer)) {
     ""
     "---"

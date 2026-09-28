@@ -2,7 +2,18 @@
 
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
-## Unreleased
+## 0.3.0 - 2026-09-28
+### New
+- **Component list:** Every release now comes with a list of the components the app contains, and a release is only built when none of them has a known security problem.
+- **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
+- **Encrypted connection:** When your computer offers it, the app now connects over an encrypted connection instead of a plain one, pinned to your computer's own certificate. Scan the pairing QR code again to switch an already-paired server to it.
+- **Skip pairing:** A close button on the pairing screen lets you go straight to Settings without pairing first.
+- **Simpler server address:** You only need to type the IP address; the port is filled in for you unless your server uses a different one.
+- **Forget the current server:** You can now remove your current server from the list too, not just the others.
+- **Fewer update prompts:** On Android 12 and newer, after the app has updated itself once, later updates may install without asking for confirmation each time. "Update now" is still always your choice.
+
+### Fixed
+- **Wrong PIN:** Entering a wrong pairing PIN now shows why it didn't work (wrong PIN, too many tries, or pairing closed on the computer) instead of doing nothing, and a lockout now counts down for real instead of showing a frozen number.
 
 ## 0.2.0 - 2026-09-25
 ### New

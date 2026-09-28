@@ -6,8 +6,8 @@ title: İndir
 
 <DownloadList />
 
-::: warning Alfa yazılım, kurulum riski size aittir
-Macro Grid telefon uygulaması, tamamen bir yapay zekâ asistanı tarafından yazılmış alfa bir yazılımdır ve güvenlik denetiminden geçmemiştir. Her yayın APK'sı, projenin yayın anahtarıyla bakımcının kendi bilgisayarında imzalanır ve elle yüklenir; anahtar GitHub'da saklanmaz. Sürümler önce taslak olarak oluşturulur ve elle yayımlanır.
+::: warning Beta yazılım, kurulum riski size aittir
+Macro Grid telefon uygulaması, tamamen bir yapay zekâ asistanı tarafından yazılmış beta bir yazılımdır ve güvenlik denetiminden geçmemiştir. Her yayın APK'sı, projenin yayın anahtarıyla bakımcının kendi bilgisayarında imzalanır ve elle yüklenir; anahtar GitHub'da saklanmaz. Sürümler önce taslak olarak oluşturulur ve elle yayımlanır.
 :::
 
 ::: warning 0.1.1 sürümünü bir kez kaldırmanız gerekir

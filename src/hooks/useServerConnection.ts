@@ -3,11 +3,19 @@ import type { Profile, WidgetState } from "@macro/renderer";
 import { ACTION_ERROR_MS } from "../constants";
 import { t } from "../i18n";
 import { getDeviceId } from "../storage/deviceId";
-import { HOST_KEY, tokenKey } from "../storage/keys";
+import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys";
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
-import { readText, writeText } from "../storage/storage";
-import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type ProfileSummary } from "../ws/connection";
+import { readText, removeItem, writeText } from "../storage/storage";
+import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
+import type { ServerCompat } from "../ws/serverCompat";
+
+/** A server whose version does not fit this app: what to tell the person, with the versions involved. */
+export interface VersionNotice {
+  compat: Exclude<ServerCompat, "ok">;
+  serverVersion: string;
+  required: string;
+}
 
 /** Removes the given keys from a record, keeping the same object when nothing would change. */
 function omitKeys<T>(record: Record<string, T>, keys: Iterable<string>): Record<string, T> {
@@ -42,6 +50,12 @@ export function useServerConnection() {
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [autoSwitch, setAutoSwitch] = useState<AutoSwitchInfo | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [versionNotice, setVersionNotice] = useState<VersionNotice | null>(null);
+  const [pairingError, setPairingError] = useState<PairingError | null>(null);
+  /** Ticks down once a second while `pairingError.retryAfterSeconds` is set; null the rest of the time. A
+   * fresh `pairingError` object (a new lockout after the first one expired) always restarts it, since the
+   * effect below re-runs on referential change, not just on the number's value. */
+  const [pairingRetrySeconds, setPairingRetrySeconds] = useState<number | null>(null);
 
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionRef = useRef<ServerConnection | null>(null);
@@ -51,6 +65,18 @@ export function useServerConnection() {
    * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
   const pendingQrPinRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    if (pairingError?.retryAfterSeconds == null) {
+      setPairingRetrySeconds(null);
+      return;
+    }
+    setPairingRetrySeconds(pairingError.retryAfterSeconds);
+    const interval = setInterval(() => {
+      setPairingRetrySeconds((prev) => (prev != null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pairingError]);
+
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
     writeText(HOST_KEY, targetHost);
@@ -58,55 +84,72 @@ export function useServerConnection() {
     setStates({});
     setProfiles([]);
     setAutoSwitch(null);
+    setVersionNotice(null);
+    setPairingError(null);
     const cached = loadLayoutCache(targetHost);
     cacheProfileRef.current = cached?.profile ?? null;
     setProfile(resolveCachedProfile(cached));
     setPageId(cached?.pageId ?? null);
     setUsingCache(cached !== null);
 
-    const connection = new ServerConnection(targetHost, getDeviceId(), t("device.name"), readText(tokenKey(targetHost)), {
-      onStatusChange: setStatus,
-      onLayout: (nextProfile, nextPageId, cacheProfile) => {
-        cacheProfileRef.current = cacheProfile;
-        setProfile(nextProfile);
-        setPageId(nextPageId);
-        setStates({});
-        setUsingCache(false);
-        // First layout means hello was accepted — only now is this a real, working server worth remembering.
-        setServers(rememberServer(targetHost));
-        saveLayoutCache(targetHost, cacheProfile, nextPageId);
+    const connection = new ServerConnection(
+      targetHost,
+      getDeviceId(),
+      t("device.name"),
+      readText(tokenKey(targetHost)),
+      readText(tlsPortKey(targetHost)),
+      readText(fingerprintKey(targetHost)),
+      {
+        onStatusChange: setStatus,
+        onLayout: (nextProfile, nextPageId, cacheProfile) => {
+          cacheProfileRef.current = cacheProfile;
+          setProfile(nextProfile);
+          setPageId(nextPageId);
+          setStates({});
+          setUsingCache(false);
+          // First layout means hello was accepted — only now is this a real, working server worth remembering.
+          setServers(rememberServer(targetHost));
+          saveLayoutCache(targetHost, cacheProfile, nextPageId);
+        },
+        onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
+          cacheProfileRef.current = cacheProfile;
+          setProfile(nextProfile);
+          setPageId(nextPageId);
+          // Only the changed widgets lose their live state (the server re-sends it); every other widget keeps
+          // its text, toggle and slider position, so an edit elsewhere on the deck is invisible here.
+          setStates((prev) => omitKeys(prev, changedWidgetIds));
+          setDragValues((prev) => omitKeys(prev, changedWidgetIds));
+          saveLayoutCache(targetHost, cacheProfile, nextPageId);
+        },
+        onPageChange: (nextPageId) => {
+          setPageId(nextPageId);
+          if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
+        },
+        onWidgetState: (state) => {
+          setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
+          if (state.value !== undefined) {
+            setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
+          }
+        },
+        onProfiles: (nextProfiles, nextAutoSwitch) => {
+          setProfiles(nextProfiles);
+          setAutoSwitch(nextAutoSwitch);
+        },
+        onPaired: (token) => writeText(tokenKey(targetHost), token),
+        onServerVersion: (compat, serverVersion, required) =>
+          setVersionNotice((prev) => {
+            if (compat === "ok") return null;
+            // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
+            return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
+          }),
+        onActionError: (message) => {
+          if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
+          setActionError(message);
+          actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
+        },
+        onPairingError: setPairingError,
       },
-      onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
-        cacheProfileRef.current = cacheProfile;
-        setProfile(nextProfile);
-        setPageId(nextPageId);
-        // Only the changed widgets lose their live state (the server re-sends it); every other widget keeps
-        // its text, toggle and slider position, so an edit elsewhere on the deck is invisible here.
-        setStates((prev) => omitKeys(prev, changedWidgetIds));
-        setDragValues((prev) => omitKeys(prev, changedWidgetIds));
-        saveLayoutCache(targetHost, cacheProfile, nextPageId);
-      },
-      onPageChange: (nextPageId) => {
-        setPageId(nextPageId);
-        if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
-      },
-      onWidgetState: (state) => {
-        setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
-        if (state.value !== undefined) {
-          setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
-        }
-      },
-      onProfiles: (nextProfiles, nextAutoSwitch) => {
-        setProfiles(nextProfiles);
-        setAutoSwitch(nextAutoSwitch);
-      },
-      onPaired: (token) => writeText(tokenKey(targetHost), token),
-      onActionError: (message) => {
-        if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
-        setActionError(message);
-        actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
-      },
-    });
+    );
     connectionRef.current = connection;
     connection.connect();
   }, []);
@@ -129,16 +172,48 @@ export function useServerConnection() {
     }
   }, [status]);
 
-  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one. */
+  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one.
+   * A `tlsPort`/`fingerprint` pair (present only when the server's QR offered one) is persisted before
+   * connecting, since the transport itself needs it — unlike the pairing token, it can't wait for a
+   * successful `hello`. */
   const connectScanned = useCallback(
-    (scannedHost: string, pin: string | null) => {
+    (scannedHost: string, pin: string | null, tlsPort?: string, fingerprint?: string) => {
+      if (tlsPort && fingerprint) {
+        writeText(tlsPortKey(scannedHost), tlsPort);
+        writeText(fingerprintKey(scannedHost), fingerprint);
+      } else {
+        removeItem(tlsPortKey(scannedHost));
+        removeItem(fingerprintKey(scannedHost));
+      }
       pendingQrPinRef.current = pin;
       connect(scannedHost);
     },
     [connect],
   );
 
-  const forget = useCallback((host: string) => setServers(forgetServer(host)), []);
+  /** Forgetting the server currently on screen also disconnects and clears it back to the connect
+   * screen's empty state — otherwise the live deck would keep working off a token that storage no
+   * longer has, and a relaunch would still try to reconnect to a host the person just removed. */
+  const forget = useCallback(
+    (host: string) => {
+      setServers(forgetServer(host));
+      if (host !== activeHost) return;
+      connectionRef.current?.disconnect();
+      connectionRef.current = null;
+      removeItem(HOST_KEY);
+      setActiveHost("");
+      setStatus("disconnected");
+      setUsingCache(false);
+      setProfile(null);
+      setPageId(null);
+      setStates({});
+      setProfiles([]);
+      setAutoSwitch(null);
+      setPairingError(null);
+      setVersionNotice(null);
+    },
+    [activeHost],
+  );
 
   return {
     activeHost,
@@ -153,12 +228,19 @@ export function useServerConnection() {
     profiles,
     autoSwitch,
     actionError,
+    versionNotice,
+    dismissVersionNotice: () => setVersionNotice(null),
+    pairingError,
+    pairingRetrySeconds,
     connect,
     connectScanned,
     forget,
     /** Sends a protocol message on the live socket (dropped while disconnected). */
     send: (type: string, data?: unknown) => connectionRef.current?.send(type, data),
-    retryWithPin: (pin: string) => connectionRef.current?.retryWithPin(pin),
+    retryWithPin: (pin: string) => {
+      setPairingError(null);
+      connectionRef.current?.retryWithPin(pin);
+    },
     changeProfile: (profileId: string) => connectionRef.current?.changeProfile(profileId),
     setProfileLock: (locked: boolean) => connectionRef.current?.setProfileLock(locked),
     nextPage: () => connectionRef.current?.nextPage(),

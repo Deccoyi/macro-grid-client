@@ -31,3 +31,7 @@ export const GESTURE_ZONE_HEIGHT_PX = 140;
 
 /** How long an action-failed toast stays visible. */
 export const ACTION_ERROR_MS = 4000;
+
+/** The server's port when the person types just an IP address, skipping the ":port" (see ConnectScreen.tsx).
+ * A saved server or a scanned QR always already has a port and is left alone. */
+export const DEFAULT_SERVER_PORT = 9820;

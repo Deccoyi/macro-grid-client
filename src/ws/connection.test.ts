@@ -37,8 +37,9 @@ function setup() {
     onProfiles: vi.fn(),
     onPaired: vi.fn(),
     onActionError: vi.fn(),
+    onPairingError: vi.fn(),
   };
-  const conn = new ServerConnection("10.0.0.2:9820", "dev1", "Phone", "tok", events);
+  const conn = new ServerConnection("10.0.0.2:9820", "dev1", "Phone", "tok", null, null, events);
   conn.connect();
   const socket = FakeSocket.last;
   socket.onopen?.();

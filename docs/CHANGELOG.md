@@ -2,6 +2,10 @@
 
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
+## Unreleased
+### Fixed
+- **Safer images and icons:** Icons and images shown on your deck are now checked before loading, so a button or image with an unsafe address is skipped instead of shown.
+
 ## 0.3.0 - 2026-09-28
 ### New
 - **Component list:** Every release now comes with a list of the components the app contains, and a release is only built when none of them has a known security problem.

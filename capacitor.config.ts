@@ -5,8 +5,11 @@ const config: CapacitorConfig = {
   appName: "Macro Grid",
   webDir: "dist",
   android: {
-    // The client connects to a plaintext ws:// server on the LAN (no TLS — self-signed certs would
-    // be a worse UX for a home/LAN tool). Cleartext must be allowed at the OS level for Android 9+.
+    // A pairing QR that carries a certificate fingerprint moves the connection to a pinned wss://
+    // via the native PinnedSocket plugin (see PinnedSocketPlugin.java); the WebView itself never
+    // sees that traffic. Without a fingerprint (an older server, or a server with TLS turned off)
+    // the WebView's own WebSocket still talks plaintext ws:// on the LAN, so cleartext must stay
+    // allowed at the OS level for Android 9+.
     allowMixedContent: true,
   },
 };

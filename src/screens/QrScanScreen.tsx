@@ -5,6 +5,10 @@ import { t } from "../i18n";
 export interface ScannedPairing {
   host: string;
   pin?: string;
+  /** Set together: present only when the server offers a TLS listener next to the plain one (see
+   * security-hardening-plan.md section A in the server repository). */
+  tlsPort?: string;
+  fingerprint?: string;
 }
 
 /**
@@ -25,7 +29,12 @@ function parsePairingQr(raw: string): ScannedPairing | null {
       // single host param — ServerConnection needs them combined into one "ip:port" string.
       const port = url.searchParams.get("port");
       const host = port ? `${ip}:${port}` : ip;
-      return { host, pin: url.searchParams.get("pin") ?? undefined };
+      return {
+        host,
+        pin: url.searchParams.get("pin") ?? undefined,
+        tlsPort: url.searchParams.get("tlsPort") ?? undefined,
+        fingerprint: url.searchParams.get("fp") ?? undefined,
+      };
     } catch {
       return null;
     }

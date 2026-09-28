@@ -4,6 +4,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 ### New
+- **Component list:** Every release now comes with a list of the components the app contains, and a release is only built when none of them has a known security problem.
 - **Version check:** The app tells you when Macro Grid on your computer is too old for it, or too new, and what to update.
 - **Encrypted connection:** When your computer offers it, the app now connects over an encrypted connection instead of a plain one, pinned to your computer's own certificate. Scan the pairing QR code again to switch an already-paired server to it.
 - **Skip pairing:** A close button on the pairing screen lets you go straight to Settings without pairing first.

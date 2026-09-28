@@ -72,7 +72,7 @@ Three small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client
   repository (ETag, no data about the phone), reads whether the network is unmetered, downloads the APK into the private cache folder (https on GitHub hosts only, redirects
   checked at every hop, size and SHA-256 verified), refuses a file signed by another key than the installed app, hands it to Android's `PackageInstaller` and removes what is
   not needed, so at most one downloaded APK stays. The decisions (which release, when to check, Later and Skip) are TypeScript in `src/update/` and `src/hooks/useUpdate.ts`;
-  the plan is in the server repository (`docs/plans/phone-app-auto-update-plan.md`).
+  the design is in the server repository (`docs/design/phone-app-auto-update.md`).
 
 Cleartext traffic is allowed (`usesCleartextTraffic` and `allowMixedContent`) because the server speaks plain `ws://`. Permissions: `INTERNET`, `ACCESS_NETWORK_STATE` (Wi-Fi or mobile data, for the update download), `REQUEST_INSTALL_PACKAGES` (install its own updates), `CAMERA` (the QR scanner) and `VIBRATE`.
 

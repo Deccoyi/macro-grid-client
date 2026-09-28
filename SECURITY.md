@@ -14,7 +14,7 @@ Macro Grid is designed for a home or office network you trust. It is **not harde
 - **LAN-only model.** The security model assumes that everyone on the network is at least somewhat trusted. Pairing (a six-digit PIN, then a token) keeps out casual connections; it is not
   a defense against an attacker on the same network. The whole system is described in the server repository's `docs/architecture.md`, and this app's part in
   [docs/architecture.md](docs/architecture.md#security).
-- **No warranty, no liability.** This software was created entirely by AI tools, is alpha-stage and has not been independently audited or security-reviewed (see the [README](README.md)). It is provided "as is", without warranty of any kind, and the authors and contributors accept no responsibility or liability for it, including for security problems and their consequences (see the [MIT license](LICENSE)). You use it entirely at your own risk. Security reports are welcome, but they create no obligation to fix and are not a promise of support or of a response time.
+- **No warranty, no liability.** This software was created entirely by AI tools, is beta-stage and has not been independently audited or security-reviewed (see the [README](README.md)). It is provided "as is", without warranty of any kind, and the authors and contributors accept no responsibility or liability for it, including for security problems and their consequences (see the [MIT license](LICENSE)). You use it entirely at your own risk. Security reports are welcome, but they create no obligation to fix and are not a promise of support or of a response time.
 
 ## Reporting a vulnerability
 
@@ -40,7 +40,7 @@ security advisory on this repository and under "Security" in the changelog.
 ## Supported versions
 
 There is no support period and no promise of fixes: Macro Grid is a hobby project maintained in spare time. If a fix is made, it only goes
-into a new release; older versions are not updated. Before the first release, fixes land on the `dev` branch. The project is in alpha.
+into a new release; older versions are not updated. Before the first release, fixes land on the `dev` branch. The project is in beta.
 
 ## What a release contains
 

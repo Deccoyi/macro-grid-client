@@ -6,8 +6,8 @@ title: Download
 
 <DownloadList />
 
-::: warning Alpha software, install at your own risk
-The Macro Grid phone app is alpha software written entirely by an AI assistant and not security-audited. Each release APK is signed with the project's release key on the maintainer's own computer and uploaded by hand; the key is never stored on GitHub. Releases are first created as drafts and published by hand.
+::: warning Beta, AI-generated, install at your own risk
+The Macro Grid phone app is beta software written entirely by an AI assistant and not security-audited. Each release APK is signed with the project's release key on the maintainer's own computer and uploaded by hand; the key is never stored on GitHub. Releases are first created as drafts and published by hand.
 :::
 
 ::: warning Version 0.1.1 has to be uninstalled once

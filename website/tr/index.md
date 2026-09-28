@@ -30,7 +30,7 @@ features:
 
 <div class="home-note">
 
-**Alfa yazılım.** Uygulama, aynı ağdaki bir Windows PC'de çalışan [Macro Grid sunucusuna](https://deccoyi.github.io/macro-grid/) ihtiyaç duyar; sunucu olmadan yalnızca bağlanma ekranını gösterir. Hiçbir şey kurmak istemezseniz tarayıcıda çalışan bir deck da var. [Gereksinimler](/tr/requirements) sayfasına bakın.
+**Beta yazılım.** Uygulama, aynı ağdaki bir Windows PC'de çalışan [Macro Grid sunucusuna](https://deccoyi.github.io/macro-grid/) ihtiyaç duyar; sunucu olmadan yalnızca bağlanma ekranını gösterir. Hiçbir şey kurmak istemezseniz tarayıcıda çalışan bir deck da var. [Gereksinimler](/tr/requirements) sayfasına bakın.
 
 </div>
 

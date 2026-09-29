@@ -10,8 +10,11 @@ Thanks for your interest. Please read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## This is a hobby project
 
-Macro Grid is maintained in spare time. Issues and pull requests are welcome, but replies and reviews can take a while, and there is no
-promise that a request will be accepted or a pull request merged. Please be patient, and don't expect support on a schedule.
+Macro Grid is maintained in spare time. Issues are welcome, but replies can take a while, and there is no promise that a request will be
+accepted. Please be patient, and don't expect support on a schedule.
+
+**Pull requests from outside the project are generally not accepted**, because this code runs on people's computers and the official plugins are
+signed as trusted. Please open an issue instead; a small fix may be accepted after it was discussed in an issue first.
 
 ## Getting set up
 
@@ -20,7 +23,7 @@ See [docs/development.md](docs/development.md) for the requirements, how to run 
 ## Before you start
 
 - For anything bigger than a small fix, open an issue first so we can agree on the approach.
-- Branching: `dev` is the integration branch, `main` holds releases only. Work on a branch from `dev` and open pull requests against `dev`.
+- Branching: `dev` is the integration branch, `main` holds releases only. A change that was agreed in an issue is made on a branch from `dev` and goes against `dev`.
 - Keep a pull request to one topic. Several small, focused commits are better than one large one.
 
 ## Rules

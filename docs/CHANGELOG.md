@@ -3,6 +3,9 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+### Changed
+- **Web pages are marked experimental:** a heavy page can slow down or freeze the app, so the Settings switch now says so.
+- **Logins in web widgets are kept:** a page in a web widget can now remember you, so cookie notices stay closed and a login lasts. "Clear web page data" in Settings still removes it all.
 
 ## 0.4.0 - 2026-09-29
 ### New

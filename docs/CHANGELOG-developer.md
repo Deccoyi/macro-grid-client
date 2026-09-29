@@ -5,6 +5,8 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+
+## [0.4.1] - 2026-09-29
 ### Changed
 - **Third-party cookies on:** `MainActivity` calls `CookieManager.setAcceptThirdPartyCookies(webView, true)`, so a page in a `web` widget keeps its cookies (consent notices, logins). Sites that need `SameSite=None` cookies still depend on the site.
 

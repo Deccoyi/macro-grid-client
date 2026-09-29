@@ -3,6 +3,11 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+### New
+- **Web widgets show real pages:** a live chat, an alerts panel or any other page you put in a web widget now appears on your deck. Pages cannot open windows, download files or use your camera or location. Only the page you are looking at is loaded, and only while the app is open.
+- **Web pages settings:** turn web pages off on this phone, or clear the data that embedded sites left on it.
+### Changed
+- **Buttons can change a web widget:** a button can show another site in a web widget, or reload it, on your phone only.
 ### Fixed
 - **Safer images and icons:** Icons and images shown on your deck are now checked before loading, so a button or image with an unsafe address is skipped instead of shown.
 

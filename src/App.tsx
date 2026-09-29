@@ -5,6 +5,7 @@ import { DEFAULT_SERVER_PORT } from "./constants";
 import { useKeepAwake } from "./hooks/useKeepAwake";
 import { useLanguage } from "./hooks/useLanguage";
 import { useServerConnection } from "./hooks/useServerConnection";
+import { useAppVisible, useWebPagesSafe } from "./hooks/useWebPages";
 import { useUpdate } from "./hooks/useUpdate";
 import { t } from "./i18n";
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -33,6 +34,13 @@ export function App() {
   const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
   const update = useUpdate(appSettings);
+  const webSafe = useWebPagesSafe();
+  const appVisible = useAppVisible();
+  // A web page runs only when the phone can keep it away from the app's native bridge, the person has not turned web pages off, and the app is in front.
+  const webPages = {
+    live: webSafe === true && appSettings.showWebPages && appVisible,
+    offText: webSafe === false ? t("web.oldWebView") : !appSettings.showWebPages ? t("web.off") : undefined,
+  };
   const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
@@ -167,6 +175,7 @@ export function App() {
       onSwipePrevPage={conn.prevPage}
       onSettingsOpenChange={setSettingsOpen}
       update={update}
+      webPages={webPages}
     />
   );
   }

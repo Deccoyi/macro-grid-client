@@ -4,6 +4,11 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
+## [Unreleased]
+### Added
+- **`widget.state` `url` and `reload`:** the renderer's `WidgetState` gains optional `url` (an address a `core.web` button set on this device; an empty string means the widget's own) and `reload` (a counter); the client reads both in `DeckScreen` and passes them as `webUrl` and `webReload`. Both are additive; an older server never sends them.
+- **The `web` widget:** the renderer copy gets `WebContent` and `isSafeWebUrl` (same rule as the server's `WebUrlRule` and the editor's copy: keep them in step) and `Widget.name`. Native: `WebPagesPlugin` (`status`, `clearData`), `SafeWebViewClient`, `SafeWebChromeClient`, `WebPageGuard`; `androidx.webkit` is now a direct dependency of the app module. The app config must not get an `allowNavigation` list. Not yet checked on a device: run the test page of the server repository's `docs/plans/web-widget-plan.md` (step 5a) on a current phone and on the oldest supported Android before a release.
+
 ## [0.3.0] - 2026-09-28
 ### Added
 - **Vulnerability check and SBOM:** CI runs `npm audit --omit=dev --audit-level=moderate` after `npm ci` and a `dependency-review` job on pull requests; `release.yml` runs the same audit before building and attaches `MacroGrid-Client-<version>-sbom.cdx.json` (CycloneDX, production npm packages from `package-lock.json`) to the draft release. The Android (Gradle) libraries are not in the SBOM yet. A fixed vulnerability goes under `### Security` in both changelogs; a GitHub security advisory is optional.

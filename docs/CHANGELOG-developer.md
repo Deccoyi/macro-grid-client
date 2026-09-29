@@ -20,13 +20,13 @@ This repo is the **client** (phone/tablet) side of Macro Grid and is versioned i
 
 ### Changed
 - **Page swipe needs two fingers:** `useDeckSwipe` changes page only for a two-finger horizontal drag (the midpoint of both fingers, `PAGE_SWIPE_THRESHOLD_PX`, vertical drift up to `TWO_FINGER_MAX_VERTICAL_PX`), on any widget. A single finger no longer sends `page.next` / `page.prev`; before, dragging a slider or knob more than 90 px sideways flipped the page when the finger lifted. The drawer swipes stay single-finger. `pageForTwoFingerSwipe` is unit tested.
-- Internal cleanup with the same behavior (branch `refactor/cleanup`, details in `refactor-notes.md`): `App.tsx` split into screens, components and hooks, a single storage helper for localStorage, `native/` and `storage/` folders, hoisted typed style constants, unit tests for the app code, renderer typecheck in `npm run typecheck`, renderer React peer range corrected to `^19.0.0`.
+- Internal cleanup with the same behavior (branch `refactor/cleanup`): `App.tsx` split into screens, components and hooks, a single storage helper for localStorage, `native/` and `storage/` folders, hoisted typed style constants, unit tests for the app code, renderer typecheck in `npm run typecheck`, renderer React peer range corrected to `^19.0.0`.
 
 ### Removed
 - Unused `@capacitor/app` dependency (with its license text and notice entry).
 
 ### Added
-- `docs/engineering-guidelines.md` and `docs/proposals/`.
+- `docs/engineering-guidelines.md`.
 
 ### Maintainer notes
 - **Release APKs are signed on the maintainer's PC and uploaded to the draft release by hand** (the key never goes to GitHub); `release.yml` no longer attaches an APK. The steps, checks and the release certificate fingerprint are in `docs/release.md`. Client versions must be a plain `X.Y.Z`.

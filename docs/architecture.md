@@ -59,11 +59,15 @@ Pairing always takes precedence over a cached layout: if the server asks for a P
 `@import` is removed, `url()` may only be a `data:` URI). It is an **independent copy** of the renderer in the server repository (which the editor and the browser deck use);
 the two are deliberately not kept in sync, so a change that both need is made in both.
 
-`web` and `plugin-html` widgets draw a placeholder for now.
+The `web` widget is an iframe (`WebContent`, address rule `isSafeWebUrl`). Its `sandbox` has no popups, downloads, top navigation, dialogs, orientation or pointer lock, its `allow` is
+empty (no camera, location, clipboard, ...) and its referrer policy is `no-referrer`; the attributes are set once when the iframe is created. An address must be `http` or `https`,
+without credentials, and never the server's own address or any loopback form. A button (`core.web` on the server) can change the address on this phone only: it arrives in `widget.state`
+as `url` (an empty string goes back to the widget's own) and `reload` (a counter). Only the shown page of the grid is mounted, and only while the app is in front. A `plugin-html`
+widget draws a placeholder for now.
 
 ## Native Android pieces
 
-Three small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client/`:
+Small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client/`:
 
 - `KioskPlugin`: Android's immersive mode (hides the status and navigation bars). It is re-applied whenever the window regains focus, because the system clears it when the
   notification shade is pulled down. It is not screen pinning; Android does not let an app do that on its own.
@@ -73,6 +77,13 @@ Three small Capacitor plugins in `android/app/src/main/java/com/macrogrid/client
   checked at every hop, size and SHA-256 verified), refuses a file signed by another key than the installed app, hands it to Android's `PackageInstaller` and removes what is
   not needed, so at most one downloaded APK stays. The decisions (which release, when to check, Later and Skip) are TypeScript in `src/update/` and `src/hooks/useUpdate.ts`;
   the design is in the server repository (`docs/design/phone-app-auto-update.md`).
+
+- `WebPagesPlugin`, `SafeWebViewClient`, `SafeWebChromeClient` and `WebPageGuard`: the second lock for the `web` widget. A page in an iframe gets no permission (camera, microphone, location,
+  notifications), no script dialog, no file picker, no new window and no download, and a navigation inside a frame only loads when it is `http` or `https` (it can never start another app or
+  the system browser). The plugin also answers whether web pages may run at all: when the phone's system WebView lacks the "web message listener" feature the framework registers its native
+  bridge in every frame, including a page's, so web widgets are turned off on that phone (a placeholder says why). The app config must never get an `allowNavigation` list; it widens the origins
+  the bridge is registered for, and the same check turns web pages off if it does. Settings has a "Show web pages" switch and a "Clear web page data" button (cookies, cache and the stored data
+  of every origin except the app's own).
 
 Cleartext traffic is allowed (`usesCleartextTraffic` and `allowMixedContent`) because the server speaks plain `ws://`. Permissions: `INTERNET`, `ACCESS_NETWORK_STATE` (Wi-Fi or mobile data, for the update download), `REQUEST_INSTALL_PACKAGES` (install its own updates), `CAMERA` (the QR scanner) and `VIBRATE`.
 

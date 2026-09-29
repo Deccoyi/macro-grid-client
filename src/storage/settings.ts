@@ -15,10 +15,12 @@ export interface AppSettings {
   /** Also offer pre-release versions (every release is one while the app is in alpha). */
   includePreReleases: boolean;
   updateNetwork: UpdateNetworkSetting;
+  /** Show web widgets on this phone. Off replaces every web page with a placeholder, without touching the profile. */
+  showWebPages: boolean;
 }
 
 const KEY = "macro-grid.settings";
-const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi" };
+const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi", showWebPages: true };
 
 export function loadSettings(): AppSettings {
   const stored = readJson<Partial<AppSettings> | null>(KEY, null);

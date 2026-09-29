@@ -1,9 +1,10 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { ProfileDrawer } from "../components/ProfileDrawer";
 import { StatusBadge } from "../components/StatusBadge";
+import { t } from "../i18n";
 import { useDeckSwipe } from "../hooks/useDeckSwipe";
 import type { UpdateController } from "../hooks/useUpdate";
 import { versionToString } from "../update/releaseVersion";
@@ -27,6 +28,12 @@ const deckStyle: CSSProperties = {
 };
 
 type WidgetEventType = "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap";
+
+/** What the deck does with its web widgets: `live` false draws the placeholder, `offText` says why. */
+export interface WebPagesState {
+  live: boolean;
+  offText?: string;
+}
 
 interface DeckScreenProps {
   page: Profile["pages"][number];
@@ -54,6 +61,13 @@ interface DeckScreenProps {
   onSwipePrevPage: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   update: UpdateController;
+  webPages: WebPagesState;
+}
+
+/** The address of the server without its port: a web widget must never show it (the page would be the server itself). */
+function serverHostName(activeHost: string): string {
+  const withoutPort = activeHost.startsWith("[") ? activeHost.slice(0, activeHost.indexOf("]") + 1) : activeHost.split(":")[0] ?? "";
+  return withoutPort;
 }
 
 /** The live deck: the current page's grid plus the connection badge, error toast, drawer and settings. */
@@ -83,7 +97,10 @@ export function DeckScreen({
   onSwipePrevPage,
   onSettingsOpenChange,
   update,
+  webPages,
 }: DeckScreenProps) {
+  const blockedHosts = useMemo(() => [serverHostName(activeHost)], [activeHost]);
+  const webTexts = useMemo(() => ({ empty: t("web.empty"), refused: t("web.refused"), off: webPages.offText }), [webPages.offText]);
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
@@ -106,6 +123,11 @@ export function DeckScreen({
               liveActive={state?.active}
               liveValue={dragValues[widget.id] ?? state?.value}
               liveStyle={state?.style}
+              webUrl={state?.url}
+              webReload={state?.reload}
+              webLive={webPages.live}
+              webBlockedHosts={blockedHosts}
+              webTexts={webTexts}
               haptics
               onPress={() => onWidgetEvent("widget.down", widget.id)}
               onRelease={() => onWidgetEvent("widget.up", widget.id)}

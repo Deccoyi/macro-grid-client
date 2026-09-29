@@ -3,6 +3,8 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+
+## 0.4.0 - 2026-09-29
 ### New
 - **Web widgets show real pages:** a live chat, an alerts panel or any other page you put in a web widget now appears on your deck. Pages cannot open windows, download files or use your camera or location. Only the page you are looking at is loaded, and only while the app is open.
 - **Web pages settings:** turn web pages off on this phone, or clear the data that embedded sites left on it.

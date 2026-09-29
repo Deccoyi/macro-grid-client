@@ -1,6 +1,7 @@
 package com.macrogrid.client;
 
 import android.os.Bundle;
+import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.Bridge;
@@ -33,6 +34,9 @@ public class MainActivity extends BridgeActivity {
         WebSettings settings = webView.getSettings();
         settings.setGeolocationEnabled(false);
         settings.setSupportMultipleWindows(false);
+        // A page in a web widget is a third-party frame of the app's own origin. Without this its cookies are dropped, so a cookie notice
+        // came back every time and a login was never kept. The cookies stay in the jar of the site that set them; the app's own data is not cookie based.
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
     }
 
     // Re-applies kiosk immersive mode after it gets cleared by a focus loss (notification shade, an

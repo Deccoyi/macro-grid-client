@@ -6,6 +6,10 @@ This repo is the **client** (phone/tablet) side of Macro Grid and is versioned i
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-29
+### Changed
+- **Third-party cookies on:** `MainActivity` calls `CookieManager.setAcceptThirdPartyCookies(webView, true)`, so a page in a `web` widget keeps its cookies (consent notices, logins). Sites that need `SameSite=None` cookies still depend on the site.
+
 ## [0.4.0] - 2026-09-29
 ### Added
 - **`widget.state` `url` and `reload`:** the renderer's `WidgetState` gains optional `url` (an address a `core.web` button set on this device; an empty string means the widget's own) and `reload` (a counter); the client reads both in `DeckScreen` and passes them as `webUrl` and `webReload`. Both are additive; an older server never sends them.

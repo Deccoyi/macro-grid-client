@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { clearWebPageData } from "../native/webPages";
 import { setLanguageSetting, t, type LanguageSetting } from "../i18n";
 import { useBackToClose } from "../hooks/useBackToClose";
 import { useLanguage } from "../hooks/useLanguage";
@@ -125,6 +126,8 @@ interface SettingsScreenProps {
 export function SettingsScreen({ open, settings, onChange, onClose, update }: SettingsScreenProps) {
   useBackToClose(open, onClose);
   const { setting: languageSetting } = useLanguage();
+  /** The result of the last "clear web page data" press: null before any. */
+  const [webDataCleared, setWebDataCleared] = useState<boolean | null>(null);
   if (!open) return null;
 
   return (
@@ -154,6 +157,22 @@ export function SettingsScreen({ open, settings, onChange, onClose, update }: Se
               </button>
             ))}
           </div>
+        </div>
+
+        <div style={sectionStyle}>{t("settings.section.web")}</div>
+        <label style={rowStyle}>
+          <div>
+            <div style={labelStyle}>{t("settings.web.show")}</div>
+            <div style={hintStyle}>{t("settings.web.show.hint")}</div>
+          </div>
+          <Switch checked={settings.showWebPages} onChange={(showWebPages) => onChange({ ...settings, showWebPages })} />
+        </label>
+        <div style={blockStyle}>
+          <button onClick={async () => setWebDataCleared(await clearWebPageData())} style={actionButtonStyle}>
+            {t("settings.web.clear")}
+          </button>
+          <div style={hintStyle}>{t("settings.web.clear.hint")}</div>
+          {webDataCleared !== null && <div style={statusStyle}>{webDataCleared ? t("settings.web.cleared") : t("settings.web.clearFailed")}</div>}
         </div>
 
         <div style={sectionStyle}>{t("settings.section.language")}</div>

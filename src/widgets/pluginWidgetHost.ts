@@ -1,4 +1,4 @@
-import { PluginWidgetError, type PluginWidgetHost, type PluginWidgetListener } from "@macro/renderer";
+import { browserStorageBackend, PluginWidgetError, WidgetDataStore, type PluginWidgetHost, type PluginWidgetListener } from "@macro/renderer";
 
 /** What the host needs from the connection: sending a message. */
 export interface WidgetTransport {
@@ -21,6 +21,8 @@ export class DeckPluginWidgetHost implements PluginWidgetHost {
     return (typeof document !== "undefined" && document.documentElement.lang) || (typeof navigator !== "undefined" ? navigator.language : "en");
   }
   readonly theme = "dark" as const;
+  /** What widgets keep on this phone; it never leaves the phone. */
+  readonly storage = new WidgetDataStore(browserStorageBackend(), "macro-grid.widgetData.");
 
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();

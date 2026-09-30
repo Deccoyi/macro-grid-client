@@ -49,6 +49,11 @@ android {
         }
     }
     buildTypes {
+        // A debug build installs next to the real app instead of replacing it.
+        debug {
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release

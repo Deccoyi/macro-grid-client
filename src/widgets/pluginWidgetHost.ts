@@ -113,6 +113,8 @@ export class DeckPluginWidgetHost implements PluginWidgetHost {
   onReconnected(): void {
     for (const p of this.pending.values()) p.reject(new PluginWidgetError("plugin_unavailable", "The connection was lost"));
     this.pending.clear();
+    // The app draws the cached layout before the socket is open: a script asked for then was never sent.
+    if (this.assetWaiters.size > 0) this.transport.send("asset.get", { hashes: [...this.assetWaiters.keys()] });
     for (const [widgetId, variables] of this.subscriptions) {
       this.send(widgetId, "subscribe", { variables });
       this.send(widgetId, "ready");

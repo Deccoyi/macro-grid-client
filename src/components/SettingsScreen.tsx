@@ -228,7 +228,7 @@ export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onC
             <div style={hintStyle}>{t("settings.widgets.off.hint")}</div>
             {offPlugins.map((plugin) => (
               <div key={plugin} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
-                <span style={{ fontSize: 14 }}>{plugin}</span>
+                <span style={{ fontSize: 14 }}>{plugin.startsWith("web:") ? plugin.slice(4) : plugin}</span>
                 <button onClick={() => onTurnOnPlugin(plugin)} style={actionButtonStyle}>
                   {t("settings.widgets.turnOn")}
                 </button>

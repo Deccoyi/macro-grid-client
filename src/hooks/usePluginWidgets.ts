@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PluginWidgetRuntime, type PluginWidgetContextValue, type PluginWidgetTexts } from "@macro/renderer";
 import { getLanguage, t } from "../i18n";
-import { forgivePlugin, loadWidgetGuardState, reportRunningPlugins, turnOnPlugin } from "../native/widgetGuard";
+import { forgivePlugin, isWebGuardId, loadWidgetGuardState, reportRunningPlugins, turnOnPlugin } from "../native/widgetGuard";
 import type { AppSettings } from "../storage/settings";
 import { liveLimitsFor } from "../widgets/limits";
 import { DeckPluginWidgetHost } from "../widgets/pluginWidgetHost";
@@ -52,11 +52,13 @@ export function usePluginWidgets(settings: Pick<AppSettings, "showPluginWidgets"
 
   const { runtime, host } = useMemo(() => {
     const runtime = new PluginWidgetRuntime({
+      // The runtime waits for the phone's confirmation before a worker starts.
       onLiveChange: (plugins) => {
-        reportRunningPlugins(plugins);
+        const confirmed = reportRunningPlugins(plugins);
         const now = Date.now();
         for (const id of plugins) if (!liveSince.current.has(id)) liveSince.current.set(id, now);
         for (const id of [...liveSince.current.keys()]) if (!plugins.includes(id)) liveSince.current.delete(id);
+        return confirmed;
       },
     });
     const host = new DeckPluginWidgetHost({ send: (type, data) => sendRef.current(type, data) }, () => pageIdRef.current);
@@ -69,7 +71,13 @@ export function usePluginWidgets(settings: Pick<AppSettings, "showPluginWidgets"
     let cancelled = false;
     void loadWidgetGuardState().then((state) => {
       if (cancelled) return;
-      setGuard({ ready: true, disabled: new Set([...state.off, ...state.probation]), off: state.off, notice: state.notice?.plugins ?? [] });
+      // Plugin ids and `web:<host>` ids come in one list; the notice names a site by its host.
+      setGuard({
+        ready: true,
+        disabled: new Set([...state.off, ...state.probation]),
+        off: state.off,
+        notice: (state.notice?.plugins ?? []).map((id) => (isWebGuardId(id) ? id.slice(4) : id)),
+      });
     });
     return () => {
       cancelled = true;
@@ -116,11 +124,19 @@ export function usePluginWidgets(settings: Pick<AppSettings, "showPluginWidgets"
   return {
     context,
     /** Plugins the phone switched off after a crash and that stay off until the person turns them on. */
-    offPlugins: guard.off,
+    offPlugins: guard.off.filter((id) => !isWebGuardId(id)),
+    /** The same for web sites, as `web:<host>` ids. */
+    offSites: guard.off.filter(isWebGuardId),
+    /** Whether the phone has answered; no web page starts before that. */
+    guardReady: guard.ready,
+    /** Everything the phone keeps off now (off for good or for this session): plugin ids and `web:<host>` ids. */
+    disabledIds: guard.disabled,
     /** The plugins blamed for the last crash, to tell the person once. */
     crashNotice: guard.notice,
     dismissNotice,
     turnOnPlugin: turnOn,
+    /** Turns a plugin or a `web:<host>` site back on. */
+    turnOn,
     /** Called by the connection: what the host needs from it. */
     connectionEvents: {
       onPluginWidgetMessage: (type: string, data: unknown) => host.onMessage(type, data),

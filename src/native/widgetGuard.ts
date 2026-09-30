@@ -1,16 +1,33 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
-/** What the phone kept across the last crash of the web view (see WidgetGuard.java). */
+/** What the phone kept across the last crash of the web view (see WidgetGuard.java). Ids are plugin ids or `web:<host>` (see `webGuardId`). */
 export interface WidgetGuardState {
-  /** Plugins whose widgets stay off until the person turns them on. */
+  /** Plugins and web sites whose widgets stay off until the person turns them on. */
   off: string[];
-  /** Plugins that stay off for this session only. */
+  /** Plugins and web sites that stay off for this session only. */
   probation: string[];
-  /** The plugins blamed for the last crash; given once. */
+  /** Who is blamed for the last crash; given once. */
   notice?: { plugins: string[]; at: number };
 }
 
+const WEB_PREFIX = "web:";
+
+/** The id a web page is blamed under: its host only (an address may carry a secret), or null when the address has no usable host. */
+export function webGuardId(url: string): string | null {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host ? WEB_PREFIX + host : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isWebGuardId(id: string): boolean {
+  return id.startsWith(WEB_PREFIX);
+}
+
 interface WidgetGuardPlugin {
+  /** One list for everything live (plugins and web sites): the phone keeps one list, so two callers writing their own halves would overwrite each other. */
   setRunning(options: { plugins: string[] }): Promise<void>;
   state(): Promise<WidgetGuardState>;
   turnOn(options: { plugin: string }): Promise<void>;
@@ -21,10 +38,31 @@ const Guard = registerPlugin<WidgetGuardPlugin>("WidgetGuard");
 
 const EMPTY: WidgetGuardState = { off: [], probation: [] };
 
-/** Tells the phone which plugins have live widgets now, so it knows whom to blame if the web view dies. Ignored on the web. */
-export function reportRunningPlugins(plugins: string[]): void {
-  if (!Capacitor.isNativePlatform()) return;
-  Guard.setRunning({ plugins }).catch(() => {});
+let runningPlugins: string[] = [];
+let runningWeb: string[] = [];
+/** Reports go one after the other, so the phone ends with the last list. */
+let queue: Promise<void> = Promise.resolve();
+
+function report(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return Promise.resolve();
+  const plugins = [...new Set([...runningPlugins, ...runningWeb])];
+  queue = queue.then(() => Guard.setRunning({ plugins })).catch(() => {});
+  return queue;
+}
+
+/**
+ * Tells the phone which plugins have live widgets now, so it knows whom to blame if the web view dies. Resolves when the phone has written the
+ * whole list (plugins and web sites together) down: start the worker after that. Ignored on the web.
+ */
+export function reportRunningPlugins(plugins: string[]): Promise<void> {
+  runningPlugins = plugins;
+  return report();
+}
+
+/** The same for web pages: the `web:<host>` ids of the pages that are about to be mounted or are mounted. Mount an iframe only after this resolves. */
+export function reportRunningWebSites(ids: string[]): Promise<void> {
+  runningWeb = ids;
+  return report();
 }
 
 /** What to keep off and what to tell the person about the last crash. Reading it clears the notice and the one-session list, so ask once per start. */

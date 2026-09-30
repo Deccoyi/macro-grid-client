@@ -34,7 +34,8 @@ export interface PluginWidgetRuntimeOptions {
    * Called before a worker starts and after one ends, with the ids of the plugins whose widgets are live (starting, running or paused). The phone
    * app keeps the list where it survives a crash of the web view, so it can tell which plugins were running when the app died.
    */
-  onLiveChange?: (plugins: string[]) => void;
+  /** Told which plugins have live workers, before a worker starts. When it returns a promise, a worker waits for it (the phone confirms it has written the list down). */
+  onLiveChange?: (plugins: string[]) => void | Promise<void>;
 }
 
 export interface MountOptions {
@@ -72,13 +73,20 @@ export class PluginWidgetRuntime {
     this.onLiveChange = options.onLiveChange;
   }
 
-  private readonly onLiveChange: ((plugins: string[]) => void) | undefined;
+  private readonly onLiveChange: ((plugins: string[]) => void | Promise<void>) | undefined;
+  /** The answer to the latest list; a worker does not start before it. A failed report must not keep a widget from starting. */
+  private liveReported: Promise<void> = Promise.resolve();
 
   private notifyLive(): void {
     if (!this.onLiveChange) return;
     const plugins = new Set<string>();
     for (const i of this.live) if (i.plugin) plugins.add(i.plugin);
-    this.onLiveChange([...plugins].sort());
+    this.liveReported = Promise.resolve(this.onLiveChange([...plugins].sort())).catch(() => undefined);
+  }
+
+  /** @internal Resolves once the latest list of live plugins has been reported. */
+  reported(): Promise<void> {
+    return this.liveReported;
   }
 
   /** Mounts one widget. It never throws: a widget that cannot start ends up stopped with a reason. */
@@ -236,6 +244,9 @@ export class PluginWidgetInstance {
     const { host, info } = this.options;
     try {
       const code = await host.loadAsset(info.code!);
+      if (this.disposed) return;
+      // Write-ahead: the phone must know this plugin is live before its code runs, or a crash could not be blamed on it.
+      await this.runtime.reported();
       if (this.disposed) return;
       const channel = new MessageChannel();
       this.port = channel.port1;

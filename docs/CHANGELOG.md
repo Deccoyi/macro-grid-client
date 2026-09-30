@@ -5,6 +5,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 ## Unreleased
 ### New
 - **Plugin widgets on your deck:** widgets drawn by plugins, such as a gauge, now run on your phone. Settings has a switch to turn them off and a recommended number of widgets that depends on your device; you can change it. If a plugin's widgets make the app close, they are switched off and the app tells you which plugin it was.
+- **A web page that crashes the app is switched off:** if a web widget's page makes the app close, that site is turned off on this phone and the app tells you which one. You can turn it back on from the widget or in Settings.
 ### Fixed
 - **Back closes Settings instead of the app:** the back button or swipe now closes an open full-screen page such as Settings, and only leaves the app from the deck.
 - **The app no longer closes when the page view crashes:** if a web page uses up all its memory, the deck reloads instead of the app shutting down.

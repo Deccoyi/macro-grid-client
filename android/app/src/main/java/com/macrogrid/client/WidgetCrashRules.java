@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 /**
  * What the app does when the web view's renderer process dies while plugin widgets were running, kept free of Android classes so it is unit tested.
  *
- * <p>The web side writes the ids of the plugins that have live widgets to the device before each worker starts. When the renderer is lost in a
+ * <p>The web side writes the ids of the plugins and web sites (`web:<host>`) that have live widgets to the device before each worker starts. When the renderer is lost in a
  * crash (not when the system only took its memory away), every plugin on that list is a suspect and gets a strike. A plugin that is the only
  * suspect, or has two strikes, is switched off until the person turns it back on. The other suspects stay off for the next session only, so a
  * plugin that merely ran next to the guilty one comes back. A plugin that then runs a whole session without a crash loses its strikes.
@@ -27,15 +27,25 @@ final class WidgetCrashRules {
     static final int STRIKES_TO_STAY_OFF = 2;
 
     private static final Pattern PLUGIN_ID = Pattern.compile("^[A-Za-z0-9._-]{1,64}$");
+    /** A web page is blamed by its site: `web:` and the lower-case host, nothing else (an address may carry a secret). A plugin id cannot hold a colon, so the two never clash. */
+    private static final Pattern WEB_ID = Pattern.compile("^web:(?:[a-z0-9._-]{1,253}|\\[[0-9a-f:.]{2,45}\\])$");
 
-    /** Only ids a plugin can really have are stored; anything else the web side passes in is dropped. */
     static boolean isPluginId(String id) {
         return id != null && PLUGIN_ID.matcher(id).matches();
     }
 
+    static boolean isWebId(String id) {
+        return id != null && WEB_ID.matcher(id).matches();
+    }
+
+    /** Only ids a plugin or a web site can really have are stored; anything else the web side passes in is dropped. */
+    static boolean isSuspectId(String id) {
+        return isPluginId(id) || isWebId(id);
+    }
+
     static Set<String> validIds(Iterable<String> ids) {
         Set<String> out = new TreeSet<>();
-        if (ids != null) for (String id : ids) if (isPluginId(id)) out.add(id);
+        if (ids != null) for (String id : ids) if (isSuspectId(id)) out.add(id);
         return out;
     }
 

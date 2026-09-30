@@ -105,7 +105,7 @@ export function App() {
   return (
     <PluginWidgetContext.Provider value={widgets.context}>
       {screen}
-      <SettingsScreen open={settingsOpen} offPlugins={widgets.offPlugins} onTurnOnPlugin={widgets.turnOnPlugin} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
+      <SettingsScreen open={settingsOpen} offPlugins={[...widgets.offPlugins, ...widgets.offSites]} onTurnOnPlugin={widgets.turnOn} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
       <UpdateScreen update={update} />
       {widgets.crashNotice.length > 0 && <InfoToast message={t("guard.notice", widgets.crashNotice.join(", "))} onDone={widgets.dismissNotice} durationMs={20_000} />}
       {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
@@ -200,6 +200,7 @@ export function App() {
       onSettingsOpenChange={setSettingsOpen}
       update={update}
       webPages={webPages}
+      webGuard={{ ready: widgets.guardReady, disabled: widgets.disabledIds, onTurnOn: widgets.turnOn }}
       pluginLive={appVisible}
     />
   );

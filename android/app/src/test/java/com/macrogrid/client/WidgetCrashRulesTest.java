@@ -95,4 +95,25 @@ public class WidgetCrashRulesTest {
     public void oldCrashTimesAreDropped() {
         assertEquals(Arrays.asList(150_000L), WidgetCrashRules.pruned(Arrays.asList(10_000L, 150_000L), 160_000));
     }
+
+    @Test
+    public void aWebSiteIsBlamedLikeAPlugin() {
+        WidgetCrashRules.Outcome o = WidgetCrashRules.onRendererGone(true, set("web:chat.example.com"), NO_STRIKES, set(), NO_CRASHES, 1000);
+
+        assertEquals(set("web:chat.example.com"), o.suspects);
+        assertEquals(set("web:chat.example.com"), o.off);
+    }
+
+    @Test
+    public void onlyAHostIsKeptForAWebSite() {
+        assertTrue(WidgetCrashRules.isSuspectId("web:chat.example.com"));
+        assertTrue(WidgetCrashRules.isSuspectId("web:[2001:db8::1]"));
+        assertTrue(WidgetCrashRules.isSuspectId("gauges"));
+        // A path, a query, a port or a secret never gets in.
+        assertFalse(WidgetCrashRules.isSuspectId("web:chat.example.com/alerts?token=abc"));
+        assertFalse(WidgetCrashRules.isSuspectId("web:chat.example.com:8080"));
+        assertFalse(WidgetCrashRules.isSuspectId("web:"));
+        assertFalse(WidgetCrashRules.isSuspectId("Web:Example.com"));
+        assertFalse(WidgetCrashRules.isSuspectId(null));
+    }
 }

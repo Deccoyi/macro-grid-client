@@ -49,7 +49,7 @@ afterEach(() => {
   for (const c of cleanups.splice(0)) c();
 });
 
-function setup(hostOverrides: Partial<PluginWidgetHost> = {}, runtimeOptions: { onLiveChange?: (plugins: string[]) => void } = {}) {
+function setup(hostOverrides: Partial<PluginWidgetHost> = {}, runtimeOptions: { onLiveChange?: (plugins: string[]) => void | Promise<void> } = {}) {
   const { clock, advance } = fakeClock();
   const started: Started[] = [];
   const terminated: string[] = [];
@@ -273,6 +273,26 @@ describe("plugin widget runtime", () => {
     b.dispose();
 
     expect(seen).toEqual([["gauges"], ["clock", "gauges"], ["clock", "gauges"], ["clock", "gauges"], ["clock"], []]);
+  });
+
+  it("does not start a worker before the phone has confirmed the live list", async () => {
+    let confirm!: () => void;
+    const { mount, started } = setup({}, { onLiveChange: () => new Promise<void>((resolve) => (confirm = resolve)) });
+
+    await mount({}, { plugin: "gauges" });
+    expect(started).toHaveLength(0);
+
+    confirm();
+    await settle();
+    expect(started).toHaveLength(1);
+  });
+
+  it("still starts a worker when the report fails", async () => {
+    const { mount, started } = setup({}, { onLiveChange: () => Promise.reject(new Error("no bridge")) });
+
+    await mount({}, { plugin: "gauges" });
+
+    expect(started).toHaveLength(1);
   });
 
   it("does not let widgets that stopped drawing take budget from the ones that still draw", async () => {

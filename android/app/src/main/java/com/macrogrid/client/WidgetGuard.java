@@ -76,7 +76,7 @@ final class WidgetGuard {
 
     /** The person turned a plugin's widgets back on. */
     void turnOn(String plugin) {
-        if (!WidgetCrashRules.isPluginId(plugin)) return;
+        if (!WidgetCrashRules.isSuspectId(plugin)) return;
         Set<String> off = readSet(OFF);
         off.remove(plugin);
         prefs.edit().putStringSet(OFF, off).remove(STRIKE + plugin).commit();
@@ -84,7 +84,7 @@ final class WidgetGuard {
 
     /** A plugin's widgets ran a whole while without a crash: its strikes are forgiven. */
     void forgive(String plugin) {
-        if (WidgetCrashRules.isPluginId(plugin)) prefs.edit().remove(STRIKE + plugin).apply();
+        if (WidgetCrashRules.isSuspectId(plugin)) prefs.edit().remove(STRIKE + plugin).apply();
     }
 
     private Set<String> readSet(String key) {

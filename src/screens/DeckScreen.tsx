@@ -1,10 +1,12 @@
 import { useMemo, type CSSProperties } from "react";
-import { Grid, WidgetView, type Profile, type WidgetState } from "@macro/renderer";
+import { Grid, WidgetView, isSafeWebUrl, type Profile, type WidgetState } from "@macro/renderer";
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { ProfileDrawer } from "../components/ProfileDrawer";
 import { StatusBadge } from "../components/StatusBadge";
 import { t } from "../i18n";
+import { useConfirmedWebSites } from "../hooks/useConfirmedWebSites";
+import { webGuardId } from "../native/widgetGuard";
 import { useDeckSwipe } from "../hooks/useDeckSwipe";
 import type { UpdateController } from "../hooks/useUpdate";
 import { versionToString } from "../update/releaseVersion";
@@ -62,6 +64,8 @@ interface DeckScreenProps {
   onSettingsOpenChange: (open: boolean) => void;
   update: UpdateController;
   webPages: WebPagesState;
+  /** What the phone's crash guard says about web sites: whether it has answered, the `web:<host>` ids it keeps off, and how to turn one back on. */
+  webGuard: { ready: boolean; disabled: ReadonlySet<string>; onTurnOn: (id: string) => void };
   /** False while the app is not in front: plugin widgets are paused then. */
   pluginLive: boolean;
 }
@@ -100,10 +104,24 @@ export function DeckScreen({
   onSettingsOpenChange,
   update,
   webPages,
+  webGuard,
   pluginLive,
 }: DeckScreenProps) {
   const blockedHosts = useMemo(() => [serverHostName(activeHost)], [activeHost]);
   const webTexts = useMemo(() => ({ empty: t("web.empty"), refused: t("web.refused"), off: webPages.offText }), [webPages.offText]);
+  // The sites of this page that are about to be live; the phone writes them down before any iframe is mounted (write-ahead).
+  const wantedSites = useMemo(() => {
+    if (!webPages.live) return [];
+    const ids: string[] = [];
+    for (const w of page.widgets) {
+      if (w.type !== "web") continue;
+      const url = states[w.id]?.url || (typeof w.props?.url === "string" ? w.props.url : "");
+      const id = isSafeWebUrl(url, blockedHosts) ? webGuardId(url) : null;
+      if (id && !webGuard.disabled.has(id)) ids.push(id);
+    }
+    return ids;
+  }, [page.widgets, states, webPages.live, blockedHosts, webGuard.disabled]);
+  const confirmedSites = useConfirmedWebSites(wantedSites, webGuard.ready);
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
@@ -119,6 +137,9 @@ export function DeckScreen({
         page={page}
         renderWidget={(widget) => {
           const state = states[widget.id];
+          const siteUrl = widget.type === "web" ? state?.url || (typeof widget.props?.url === "string" ? widget.props.url : "") : "";
+          const siteId = siteUrl && isSafeWebUrl(siteUrl, blockedHosts) ? webGuardId(siteUrl) : null;
+          const siteOff = siteId !== null && webGuard.disabled.has(siteId);
           return (
             <WidgetView
               widget={widget}
@@ -128,7 +149,8 @@ export function DeckScreen({
               liveStyle={state?.style}
               webUrl={state?.url}
               webReload={state?.reload}
-              webLive={webPages.live}
+              webLive={webPages.live && (siteId === null || confirmedSites.has(siteId))}
+              webBlocked={siteOff && siteId ? { text: t("web.crashedOff"), action: t("settings.widgets.turnOn"), onAction: () => webGuard.onTurnOn(siteId) } : undefined}
               webBlockedHosts={blockedHosts}
               webTexts={webTexts}
               pluginLive={pluginLive}

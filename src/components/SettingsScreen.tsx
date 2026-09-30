@@ -118,6 +118,9 @@ export function SettingsButton({ onOpen }: { onOpen: () => void }) {
 
 interface SettingsScreenProps {
   open: boolean;
+  /** Plugins whose widgets the phone switched off after a crash. */
+  offPlugins: string[];
+  onTurnOnPlugin: (plugin: string) => void;
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
   onClose: () => void;
@@ -125,7 +128,7 @@ interface SettingsScreenProps {
 }
 
 /** The full-screen settings page: display, updates and the about text. A list of rows, not a stack of cards. */
-export function SettingsScreen({ open, settings, onChange, onClose, update }: SettingsScreenProps) {
+export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onChange, onClose, update }: SettingsScreenProps) {
   useBackToClose(open, onClose);
   const { setting: languageSetting } = useLanguage();
   /** The result of the last "clear web page data" press: null before any. */
@@ -214,6 +217,20 @@ export function SettingsScreen({ open, settings, onChange, onClose, update }: Se
           )}
           <div style={hintStyle}>{t("settings.widgets.limit.hint")}</div>
         </div>
+        {offPlugins.length > 0 && (
+          <div style={blockStyle}>
+            <div style={labelStyle}>{t("settings.widgets.off")}</div>
+            <div style={hintStyle}>{t("settings.widgets.off.hint")}</div>
+            {offPlugins.map((plugin) => (
+              <div key={plugin} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+                <span style={{ fontSize: 14 }}>{plugin}</span>
+                <button onClick={() => onTurnOnPlugin(plugin)} style={actionButtonStyle}>
+                  {t("settings.widgets.turnOn")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={sectionStyle}>{t("settings.section.language")}</div>
         <div style={blockStyle}>

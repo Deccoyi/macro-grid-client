@@ -49,6 +49,21 @@ export function App() {
   };
   const shownPage = conn.profile?.pages.find((p) => p.id === conn.pageId) ?? conn.profile?.pages[0];
   useEffect(() => setShownPageId(shownPage?.id), [shownPage?.id]);
+  // What the phone says about the last crash goes to the server once, so the plugin's author sees it in the Error List.
+  const [crashReported, setCrashReported] = useState(false);
+  useEffect(() => {
+    if (crashReported || widgets.crashNotice.length === 0 || conn.status !== "connected" || !conn.profile) return;
+    for (const plugin of widgets.crashNotice) {
+      for (const p of conn.profile.pages) {
+        const w = p.widgets.find((x) => x.type === "plugin-widget" && x.props?.plugin === plugin);
+        if (w) {
+          conn.send("plugin.widget.error", { pageId: p.id, widgetId: w.id, message: "The app closed unexpectedly while this plugin's widgets were running; the phone switched them off." });
+          break;
+        }
+      }
+    }
+    setCrashReported(true);
+  }, [crashReported, widgets.crashNotice, conn.status, conn.profile, conn]);
   const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
@@ -90,8 +105,9 @@ export function App() {
   return (
     <PluginWidgetContext.Provider value={widgets.context}>
       {screen}
-      <SettingsScreen open={settingsOpen} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
+      <SettingsScreen open={settingsOpen} offPlugins={widgets.offPlugins} onTurnOnPlugin={widgets.turnOnPlugin} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
       <UpdateScreen update={update} />
+      {widgets.crashNotice.length > 0 && <InfoToast message={t("guard.notice", widgets.crashNotice.join(", "))} onDone={widgets.dismissNotice} durationMs={20_000} />}
       {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
       {conn.versionNotice && (
         <InfoToast

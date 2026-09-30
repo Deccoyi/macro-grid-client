@@ -4,6 +4,7 @@ import { setLanguageSetting, t, type LanguageSetting } from "../i18n";
 import { useBackToClose } from "../hooks/useBackToClose";
 import { useLanguage } from "../hooks/useLanguage";
 import type { UpdateController } from "../hooks/useUpdate";
+import { autoLiveLimits } from "../widgets/limits";
 import type { AppSettings, OrientationSetting, PluginWidgetLimitSetting, UpdateNetworkSetting } from "../storage/settings";
 import { versionToString } from "../update/releaseVersion";
 import { colors, sectionLabelStyle, selectedTint } from "../theme";
@@ -215,6 +216,10 @@ export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onC
               </button>
             </div>
           )}
+          {settings.pluginWidgetLimit === "auto" && (() => {
+            const auto = autoLiveLimits();
+            return <div style={hintStyle}>{t("settings.widgets.limit.recommended", String(auto.maxLive), String(auto.maxLiveUnverified))}</div>;
+          })()}
           <div style={hintStyle}>{t("settings.widgets.limit.hint")}</div>
         </div>
         {offPlugins.length > 0 && (

@@ -7,7 +7,9 @@ export interface DeviceHints {
 }
 
 export interface LiveLimits {
+  /** How many plugin widgets run at once on this device. */
   maxLive: number;
+  /** How many of them may belong to one plugin that is not verified. */
   maxLiveUnverified: number;
 }
 

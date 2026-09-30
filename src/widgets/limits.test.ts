@@ -13,6 +13,10 @@ describe("live widget limits", () => {
     expect(autoLiveLimits({})).toEqual({ maxLive: 4, maxLiveUnverified: 2 });
   });
 
+  it("counts the limit for a plugin that is not verified per plugin, so a number the person chose applies to each", () => {
+    expect(liveLimitsFor({ pluginWidgetLimit: "custom", pluginWidgetLimitCount: 3 }).maxLiveUnverified).toBe(3);
+  });
+
   it("uses the person's number for both limits and lifts the limit when asked", () => {
     expect(liveLimitsFor({ pluginWidgetLimit: "custom", pluginWidgetLimitCount: 12 })).toEqual({ maxLive: 12, maxLiveUnverified: 12 });
     expect(liveLimitsFor({ pluginWidgetLimit: "none", pluginWidgetLimitCount: 4 })).toEqual({ maxLive: Infinity, maxLiveUnverified: Infinity });

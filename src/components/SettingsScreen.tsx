@@ -4,7 +4,7 @@ import { setLanguageSetting, t, type LanguageSetting } from "../i18n";
 import { useBackToClose } from "../hooks/useBackToClose";
 import { useLanguage } from "../hooks/useLanguage";
 import type { UpdateController } from "../hooks/useUpdate";
-import { autoLiveLimits } from "../widgets/limits";
+import { autoLiveLimits, autoWebLimit } from "../widgets/limits";
 import type { AppSettings, OrientationSetting, PluginWidgetLimitSetting, UpdateNetworkSetting } from "../storage/settings";
 import { versionToString } from "../update/releaseVersion";
 import { colors, sectionLabelStyle, selectedTint } from "../theme";
@@ -179,6 +179,28 @@ export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onC
           </button>
           <div style={hintStyle}>{t("settings.web.clear.hint")}</div>
           {webDataCleared !== null && <div style={statusStyle}>{webDataCleared ? t("settings.web.cleared") : t("settings.web.clearFailed")}</div>}
+        </div>
+        <div style={blockStyle}>
+          <div style={labelStyle}>{t("settings.web.limit")}</div>
+          <div style={segmentRowStyle}>
+            {WIDGET_LIMITS.map((mode) => (
+              <button key={mode} onClick={() => onChange({ ...settings, webWidgetLimit: mode })} style={segmentStyle(settings.webWidgetLimit === mode)}>
+                {mode === "custom" && settings.webWidgetLimit === "custom" ? `${t(WIDGET_LIMIT_LABEL_KEYS[mode])}: ${settings.webWidgetLimitCount}` : t(WIDGET_LIMIT_LABEL_KEYS[mode])}
+              </button>
+            ))}
+          </div>
+          {settings.webWidgetLimit === "custom" && (
+            <div style={segmentRowStyle}>
+              <button aria-label="-" onClick={() => onChange({ ...settings, webWidgetLimitCount: Math.max(1, settings.webWidgetLimitCount - 1) })} style={actionButtonStyle}>
+                −
+              </button>
+              <button aria-label="+" onClick={() => onChange({ ...settings, webWidgetLimitCount: Math.min(16, settings.webWidgetLimitCount + 1) })} style={actionButtonStyle}>
+                +
+              </button>
+            </div>
+          )}
+          {settings.webWidgetLimit === "auto" && <div style={hintStyle}>{t("settings.web.limit.recommended", String(autoWebLimit()))}</div>}
+          <div style={hintStyle}>{t("settings.web.limit.hint")}</div>
         </div>
 
         <div style={sectionStyle}>{t("settings.section.widgets")}</div>

@@ -34,7 +34,7 @@ export interface WidgetViewProps {
   webBlockedHosts?: readonly string[];
   /** A `web` widget only: replaces the English words of the placeholder. */
   webTexts?: Partial<WebTexts>;
-  /** A `web` widget only: draw a placeholder with a button instead of the page (the site crashed the app and is off). */
+  /** A `web` widget only: draw a placeholder with a button instead of the page (the site crashed the app, or the widget waits with "Tap to load"). */
   webBlocked?: WebBlocked;
   /** A `plugin-widget` only: false when its page is not the one shown (its worker is stopped, or paused when it keeps itself loaded). Default true. */
   pluginLive?: boolean;

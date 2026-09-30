@@ -7,7 +7,7 @@ import { useKeepAwake } from "./hooks/useKeepAwake";
 import { useLanguage } from "./hooks/useLanguage";
 import { usePluginWidgets } from "./hooks/usePluginWidgets";
 import { useServerConnection } from "./hooks/useServerConnection";
-import { useAppVisible, useWebPagesSafe } from "./hooks/useWebPages";
+import { useAppVisible, useHeldTrue, useWebPagesSafe, WEB_BACKGROUND_UNLOAD_MS } from "./hooks/useWebPages";
 import { useUpdate } from "./hooks/useUpdate";
 import { t } from "./i18n";
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -15,6 +15,7 @@ import { ConnectScreen } from "./screens/ConnectScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
 import { HOST_KEY } from "./storage/keys";
+import { webLimitFor } from "./widgets/limits";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { readText } from "./storage/storage";
 
@@ -42,9 +43,11 @@ export function App() {
   const update = useUpdate(appSettings);
   const webSafe = useWebPagesSafe();
   const appVisible = useAppVisible();
-  // A web page runs only when the phone can keep it away from the app's native bridge, the person has not turned web pages off, and the app is in front.
+  // A web page runs only when the phone can keep it away from the app's native bridge, the person has not turned web pages off, and the app is in front
+  // (or left it less than 30 seconds ago, so a short trip to another app does not reload a chat).
+  const webAppActive = useHeldTrue(appVisible, WEB_BACKGROUND_UNLOAD_MS);
   const webPages = {
-    live: webSafe === true && appSettings.showWebPages && appVisible,
+    live: webSafe === true && appSettings.showWebPages && webAppActive,
     offText: webSafe === false ? t("web.oldWebView") : !appSettings.showWebPages ? t("web.off") : undefined,
   };
   const shownPage = conn.profile?.pages.find((p) => p.id === conn.pageId) ?? conn.profile?.pages[0];
@@ -162,6 +165,7 @@ export function App() {
   return (
     <DeckScreen
       page={page}
+      pages={profile.pages}
       status={conn.status}
       usingCache={conn.usingCache}
       actionError={conn.actionError}
@@ -200,6 +204,7 @@ export function App() {
       onSettingsOpenChange={setSettingsOpen}
       update={update}
       webPages={webPages}
+      webLimit={webLimitFor(appSettings)}
       webGuard={{ ready: widgets.guardReady, disabled: widgets.disabledIds, onTurnOn: widgets.turnOn }}
       pluginLive={appVisible}
     />

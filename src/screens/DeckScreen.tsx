@@ -1,5 +1,5 @@
-import { useMemo, type CSSProperties } from "react";
-import { Grid, WidgetView, isSafeWebUrl, type Profile, type WidgetState } from "@macro/renderer";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Grid, WidgetView, isSafeWebUrl, webUrlHost, type Profile, type Widget, type WidgetState } from "@macro/renderer";
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { ProfileDrawer } from "../components/ProfileDrawer";
@@ -7,6 +7,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { t } from "../i18n";
 import { useConfirmedWebSites } from "../hooks/useConfirmedWebSites";
 import { webGuardId } from "../native/widgetGuard";
+import { planWebLoad, type WebCandidate } from "../widgets/webLoad";
 import { useDeckSwipe } from "../hooks/useDeckSwipe";
 import type { UpdateController } from "../hooks/useUpdate";
 import { versionToString } from "../update/releaseVersion";
@@ -39,6 +40,8 @@ export interface WebPagesState {
 
 interface DeckScreenProps {
   page: Profile["pages"][number];
+  /** Every page of the profile: a page with a "keep loaded" web widget stays mounted (hidden) once it has been shown. */
+  pages: Profile["pages"];
   status: ConnectionStatus;
   usingCache: boolean;
   actionError: string | null;
@@ -64,6 +67,8 @@ interface DeckScreenProps {
   onSettingsOpenChange: (open: boolean) => void;
   update: UpdateController;
   webPages: WebPagesState;
+  /** How many web widgets may be live at once; the rest wait with a "Tap to load" placeholder. */
+  webLimit: number;
   /** What the phone's crash guard says about web sites: whether it has answered, the `web:<host>` ids it keeps off, and how to turn one back on. */
   webGuard: { ready: boolean; disabled: ReadonlySet<string>; onTurnOn: (id: string) => void };
   /** False while the app is not in front: plugin widgets are paused then. */
@@ -79,6 +84,7 @@ function serverHostName(activeHost: string): string {
 /** The live deck: the current page's grid plus the connection badge, error toast, drawer and settings. */
 export function DeckScreen({
   page,
+  pages,
   status,
   usingCache,
   actionError,
@@ -104,24 +110,83 @@ export function DeckScreen({
   onSettingsOpenChange,
   update,
   webPages,
+  webLimit,
   webGuard,
   pluginLive,
 }: DeckScreenProps) {
   const blockedHosts = useMemo(() => [serverHostName(activeHost)], [activeHost]);
   const webTexts = useMemo(() => ({ empty: t("web.empty"), refused: t("web.refused"), off: webPages.offText }), [webPages.offText]);
-  // The sites of this page that are about to be live; the phone writes them down before any iframe is mounted (write-ahead).
-  const wantedSites = useMemo(() => {
-    if (!webPages.live) return [];
-    const ids: string[] = [];
-    for (const w of page.widgets) {
-      if (w.type !== "web") continue;
-      const url = states[w.id]?.url || (typeof w.props?.url === "string" ? w.props.url : "");
-      const id = isSafeWebUrl(url, blockedHosts) ? webGuardId(url) : null;
-      if (id && !webGuard.disabled.has(id)) ids.push(id);
-    }
-    return ids;
-  }, [page.widgets, states, webPages.live, blockedHosts, webGuard.disabled]);
+  /** The `web:<host>` id of the address a web widget shows now (the override of a button, else its own), or null when it shows none or a refused one. */
+  const siteOf = (widget: Widget): string | null => {
+    if (widget.type !== "web") return null;
+    const url = states[widget.id]?.url || (typeof widget.props?.url === "string" ? widget.props.url : "");
+    return isSafeWebUrl(url, blockedHosts) ? webGuardId(url) : null;
+  };
+  const isKept = (widget: Widget) => widget.type === "web" && widget.props?.keepLoaded === true;
+
+  // Pages that keep a web widget loaded stay mounted, hidden, once they have been shown, so a chat does not reload on every page change.
+  const [visited, setVisited] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => setVisited((v) => (v.has(page.id) ? v : new Set(v).add(page.id))), [page.id]);
+  // A widget the person tapped loads even over the limit; that holds only for the page it was tapped on.
+  const [tapped, setTapped] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => setTapped(new Set()), [page.id]);
+
+  const keptPages = useMemo(() => pages.filter((p) => p.id !== page.id && visited.has(p.id) && p.widgets.some(isKept)), [pages, page.id, visited]);
+  const webPlan = useMemo(() => {
+    if (!webPages.live) return { live: [] as WebCandidate[], waiting: new Set<string>() };
+    const candidates: WebCandidate[] = [];
+    const add = (widget: Widget) => {
+      const siteId = siteOf(widget);
+      if (siteId && !webGuard.disabled.has(siteId)) candidates.push({ widgetId: widget.id, siteId });
+    };
+    // Kept widgets of other pages hold their slots first; the shown page follows in reading order.
+    for (const p of keptPages) p.widgets.filter(isKept).forEach(add);
+    [...page.widgets].filter((w) => w.type === "web").sort((a, b) => a.y - b.y || a.x - b.x).forEach(add);
+    return planWebLoad(candidates, webLimit, tapped);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.widgets, keptPages, states, webPages.live, blockedHosts, webGuard.disabled, webLimit, tapped]);
+  const liveWidgetIds = useMemo(() => new Set(webPlan.live.map((c) => c.widgetId)), [webPlan]);
+  // The sites that are about to be live; the phone writes them down before any iframe is mounted (write-ahead).
+  const wantedSites = useMemo(() => webPlan.live.map((c) => c.siteId), [webPlan]);
   const confirmedSites = useConfirmedWebSites(wantedSites, webGuard.ready);
+  const renderWidget = (widget: Widget) => {
+    const state = states[widget.id];
+    const siteId = siteOf(widget);
+    const siteOff = siteId !== null && webGuard.disabled.has(siteId);
+    const waiting = siteId !== null && !siteOff && webPlan.waiting.has(widget.id);
+    const loadable = siteId === null || (liveWidgetIds.has(widget.id) && confirmedSites.has(siteId));
+    let webBlocked;
+    if (siteOff && siteId) webBlocked = { text: t("web.crashedOff"), action: t("settings.widgets.turnOn"), onAction: () => webGuard.onTurnOn(siteId) };
+    else if (waiting)
+      webBlocked = { text: webUrlHost(state?.url || String(widget.props?.url ?? "")), action: t("web.tapToLoad"), onAction: () => setTapped((prev) => new Set(prev).add(widget.id)) };
+    return (
+      <WidgetView
+        widget={widget}
+        liveText={state?.text}
+        liveActive={state?.active}
+        liveValue={dragValues[widget.id] ?? state?.value}
+        liveStyle={state?.style}
+        webUrl={state?.url}
+        webReload={state?.reload}
+        webLive={webPages.live && loadable}
+        webBlocked={webBlocked}
+        webBlockedHosts={blockedHosts}
+        webTexts={webTexts}
+        pluginLive={pluginLive}
+        haptics
+        onPress={() => onWidgetEvent("widget.down", widget.id)}
+        onRelease={() => onWidgetEvent("widget.up", widget.id)}
+        onLongPress={() => onWidgetEvent("widget.longPress", widget.id)}
+        onDoubleTap={() => onWidgetEvent("widget.doubleTap", widget.id)}
+        onValueChange={(value) => onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }))}
+        onValueCommit={(value) => {
+          onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }));
+          onWidgetValueCommit(widget.id, value);
+        }}
+      />
+    );
+  };
+
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
@@ -133,41 +198,19 @@ export function DeckScreen({
           Shown even with a single profile — it's also the only way to reach the settings. */}
       {!drawerOpen && <DrawerHandle onOpen={() => onDrawerOpenChange(true)} showDot={update.offer !== null} />}
 
-      <Grid
-        page={page}
-        renderWidget={(widget) => {
-          const state = states[widget.id];
-          const siteUrl = widget.type === "web" ? state?.url || (typeof widget.props?.url === "string" ? widget.props.url : "") : "";
-          const siteId = siteUrl && isSafeWebUrl(siteUrl, blockedHosts) ? webGuardId(siteUrl) : null;
-          const siteOff = siteId !== null && webGuard.disabled.has(siteId);
+      {/* In the profile's page order, so a kept page is never moved (moving an iframe in the document reloads it). */}
+      {pages
+        .filter((p) => p.id === page.id || keptPages.some((k) => k.id === p.id))
+        .map((p) => {
+          const shown = p.id === page.id;
+          // A page that is not shown keeps only its "keep loaded" web widgets; everything else on it is unmounted.
+          const gridPage = shown ? page : { ...p, widgets: p.widgets.filter(isKept) };
           return (
-            <WidgetView
-              widget={widget}
-              liveText={state?.text}
-              liveActive={state?.active}
-              liveValue={dragValues[widget.id] ?? state?.value}
-              liveStyle={state?.style}
-              webUrl={state?.url}
-              webReload={state?.reload}
-              webLive={webPages.live && (siteId === null || confirmedSites.has(siteId))}
-              webBlocked={siteOff && siteId ? { text: t("web.crashedOff"), action: t("settings.widgets.turnOn"), onAction: () => webGuard.onTurnOn(siteId) } : undefined}
-              webBlockedHosts={blockedHosts}
-              webTexts={webTexts}
-              pluginLive={pluginLive}
-              haptics
-              onPress={() => onWidgetEvent("widget.down", widget.id)}
-              onRelease={() => onWidgetEvent("widget.up", widget.id)}
-              onLongPress={() => onWidgetEvent("widget.longPress", widget.id)}
-              onDoubleTap={() => onWidgetEvent("widget.doubleTap", widget.id)}
-              onValueChange={(value) => onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }))}
-              onValueCommit={(value) => {
-                onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }));
-                onWidgetValueCommit(widget.id, value);
-              }}
-            />
+            <div key={p.id} style={{ width: "100%", height: "100%", display: shown ? "block" : "none" }}>
+              <Grid page={gridPage} renderWidget={renderWidget} />
+            </div>
           );
-        }}
-      />
+        })}
 
       <ProfileDrawer
         open={drawerOpen}

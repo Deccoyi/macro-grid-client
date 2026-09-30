@@ -29,7 +29,7 @@ export interface WebContentProps {
   blockedHosts?: readonly string[];
   /** Replaces the default English words of the placeholder. */
   texts?: Partial<WebTexts>;
-  /** Draws this instead of the page (the phone turned the site off after a crash), with a button that turns it back on. Checked before the address. */
+  /** Draws this instead of the page (a site turned off after a crash, or waiting with "Tap to load"), with a button. Checked before the address. */
   blocked?: WebBlocked;
 }
 

@@ -62,8 +62,20 @@ the two are deliberately not kept in sync, so a change that both need is made in
 The `web` widget is an iframe (`WebContent`, address rule `isSafeWebUrl`). Its `sandbox` has no popups, downloads, top navigation, dialogs, orientation or pointer lock, its `allow` is
 empty (no camera, location, clipboard, ...) and its referrer policy is `no-referrer`; the attributes are set once when the iframe is created. An address must be `http` or `https`,
 without credentials, and never the server's own address or any loopback form. A button (`core.web` on the server) can change the address on this phone only: it arrives in `widget.state`
-as `url` (an empty string goes back to the widget's own) and `reload` (a counter). Only the shown page of the grid is mounted, and only while the app is in front. A `plugin-html`
-widget draws a placeholder for now.
+as `url` (an empty string goes back to the widget's own) and `reload` (a counter). Only the shown page of the grid is mounted. A `plugin-html` widget draws a placeholder for now.
+
+A page cannot be limited in memory or CPU and shares the one renderer process with the deck, so the phone guards itself around web pages:
+- **Crash guard.** The crash guard of plugin widgets (`WidgetGuard`, `WidgetCrashRules`) also covers web pages. The suspect of a page is its site, written `web:<host>` (host only, never the path or query:
+  an alerts link carries a secret). The ids of everything live, plugins and `web:` hosts, go to the phone in one call, and an iframe is mounted only after the phone has confirmed it (write-ahead,
+  `useConfirmedWebSites`; the plugin widgets' own report waits for it too). A page that navigates to another site on its own stays blamed under its starting host. A site the guard turned off draws a
+  placeholder with a "Turn on" button, and Settings lists it next to the plugins.
+- **Recommended live number.** Web widgets have their own number (`autoWebLimit` in `widgets/limits.ts`: 1 on a small phone, up to 3 on a strong one; Settings can choose a number or no limit) and do not
+  take slots from plugin widgets. `planWebLoad` gives the slots in order (widgets kept loaded on other pages first, then the shown page in reading order); the rest draw a "Tap to load" placeholder,
+  and a tap loads that widget even over the number (until the page is left).
+- **Keep loaded.** A web widget with `props.keepLoaded` stays mounted, hidden, when its page is left (`DeckScreen` keeps such a page in the document with `display: none`, in the profile's page order,
+  because moving an iframe reloads it). Only that widget stays; the rest of the page is unmounted. It counts toward the live number.
+- **Background.** Web pages are unloaded 30 seconds after the app goes to the background or the screen turns off (`useHeldTrue`), and load again when it is back (a chat reconnects by itself). Plugin widgets are paused at once instead.
+- **Not built: slow-page detection.** A frozen iframe blocks the parent's own long-task report, so no widget can be named as slow; only the crash guard and Tap to load exist.
 
 ## Native Android pieces
 

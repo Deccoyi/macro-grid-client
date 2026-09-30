@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoLiveLimits, liveLimitsFor } from "./limits";
+import { autoLiveLimits, autoWebLimit, liveLimitsFor, webLimitFor } from "./limits";
 
 describe("live widget limits", () => {
   it("gives a small phone few widgets and a strong device more, never more than 8", () => {
@@ -21,5 +21,19 @@ describe("live widget limits", () => {
     expect(liveLimitsFor({ pluginWidgetLimit: "custom", pluginWidgetLimitCount: 12 })).toEqual({ maxLive: 12, maxLiveUnverified: 12 });
     expect(liveLimitsFor({ pluginWidgetLimit: "none", pluginWidgetLimitCount: 4 })).toEqual({ maxLive: Infinity, maxLiveUnverified: Infinity });
     expect(liveLimitsFor({ pluginWidgetLimit: "auto", pluginWidgetLimitCount: 4 }, { cores: 8, memoryGb: 8 }).maxLive).toBe(8);
+  });
+
+  it("recommends 1 web widget on a small phone, up to 3 on a strong one", () => {
+    expect(autoWebLimit({ cores: 8, memoryGb: 2 })).toBe(1);
+    expect(autoWebLimit({ cores: 4, memoryGb: 8 })).toBe(1);
+    expect(autoWebLimit({ cores: 8, memoryGb: 4 })).toBe(2);
+    expect(autoWebLimit({ cores: 8, memoryGb: 8 })).toBe(3);
+    expect(autoWebLimit({})).toBe(1);
+  });
+
+  it("uses the person's web widget number or lifts the limit", () => {
+    expect(webLimitFor({ webWidgetLimit: "custom", webWidgetLimitCount: 5 })).toBe(5);
+    expect(webLimitFor({ webWidgetLimit: "none", webWidgetLimitCount: 5 })).toBe(Infinity);
+    expect(webLimitFor({ webWidgetLimit: "auto", webWidgetLimitCount: 5 }, { cores: 8, memoryGb: 8 })).toBe(3);
   });
 });

@@ -35,14 +35,16 @@ final class SafeWebViewClient extends BridgeWebViewClient {
     /**
      * The web view's renderer process can die (a page or a widget script ran out of memory). Left unhandled, Android then closes the whole app.
      * Returning true tells the system the loss is handled; the dead WebView cannot be reused, so the activity is recreated with a fresh one. The time
-     * is kept in the {@value #CRASH_PREFS} preferences so the next start can tell the person what happened.
+     * is kept in the {@value #CRASH_PREFS} preferences, and {@link WidgetGuard} works out which plugins' widgets to blame and switch off, so the next
+     * start can tell the person what happened. Crashes that come one after the other end the app instead of starting it again and again.
      */
     @Override
     public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
         Log.w("SafeWebViewClient", "render process gone, crashed=" + detail.didCrash());
         Activity activity = ownBridge.getActivity();
         activity.getSharedPreferences(CRASH_PREFS, Context.MODE_PRIVATE).edit().putLong("renderGoneAt", System.currentTimeMillis()).apply();
-        activity.runOnUiThread(activity::recreate);
+        boolean restart = new WidgetGuard(activity).onRendererGone(detail.didCrash(), System.currentTimeMillis());
+        activity.runOnUiThread(restart ? activity::recreate : activity::finish);
         return true;
     }
 }

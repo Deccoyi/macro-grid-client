@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PinnedSocketPlugin.class);
         registerPlugin(UpdaterPlugin.class);
         registerPlugin(WebPagesPlugin.class);
+        registerPlugin(WidgetGuardPlugin.class);
         super.onCreate(savedInstanceState);
         lockDownWebPages();
     }

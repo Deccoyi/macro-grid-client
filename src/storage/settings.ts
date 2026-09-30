@@ -17,10 +17,18 @@ export interface AppSettings {
   updateNetwork: UpdateNetworkSetting;
   /** Show web widgets on this phone. Off replaces every web page with a placeholder, without touching the profile. */
   showWebPages: boolean;
+  /** Show plugin widgets on this phone. Off replaces each with a placeholder, without touching the profile. */
+  showPluginWidgets: boolean;
+  /** How many plugin widgets may run at once: worked out from the phone ("auto"), a number the person chose ("custom"), or no limit. */
+  pluginWidgetLimit: PluginWidgetLimitSetting;
+  /** The number used when `pluginWidgetLimit` is "custom". */
+  pluginWidgetLimitCount: number;
 }
 
+export type PluginWidgetLimitSetting = "auto" | "custom" | "none";
+
 const KEY = "macro-grid.settings";
-const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi", showWebPages: true };
+const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi", showWebPages: true, showPluginWidgets: true, pluginWidgetLimit: "auto", pluginWidgetLimitCount: 4 };
 
 export function loadSettings(): AppSettings {
   const stored = readJson<Partial<AppSettings> | null>(KEY, null);

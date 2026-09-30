@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { PluginWidgetContext } from "@macro/renderer";
 import { InfoToast } from "./components/InfoToast";
 import { UpdateScreen } from "./components/UpdateScreen";
 import { DEFAULT_SERVER_PORT } from "./constants";
 import { useKeepAwake } from "./hooks/useKeepAwake";
 import { useLanguage } from "./hooks/useLanguage";
+import { usePluginWidgets } from "./hooks/usePluginWidgets";
 import { useServerConnection } from "./hooks/useServerConnection";
 import { useAppVisible, useWebPagesSafe } from "./hooks/useWebPages";
 import { useUpdate } from "./hooks/useUpdate";
@@ -24,14 +26,18 @@ function withDefaultPort(host: string): string {
 
 /** Chooses between the QR scanner, the connect screen and the deck, and holds the UI-only state (panels, form text). */
 export function App() {
-  const conn = useServerConnection();
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
+  // The widget host needs the person's settings and the shown page, and the connection needs the host: settings first, the connection next.
+  const [shownPageId, setShownPageId] = useState<string | undefined>(undefined);
+  const widgets = usePluginWidgets(appSettings, shownPageId);
+  const conn = useServerConnection(widgets.connectionEvents);
+  widgets.setSend(conn.send);
   /** The connect screen's text field — `conn.activeHost` is the server the socket is actually pointed at. */
   const [host, setHost] = useState(() => readText(HOST_KEY) ?? "");
   /** Forces the connect screen over a live/cached deck so a second server can be added. */
   const [addingServer, setAddingServer] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
   const update = useUpdate(appSettings);
   const webSafe = useWebPagesSafe();
@@ -41,6 +47,8 @@ export function App() {
     live: webSafe === true && appSettings.showWebPages && appVisible,
     offText: webSafe === false ? t("web.oldWebView") : !appSettings.showWebPages ? t("web.off") : undefined,
   };
+  const shownPage = conn.profile?.pages.find((p) => p.id === conn.pageId) ?? conn.profile?.pages[0];
+  useEffect(() => setShownPageId(shownPage?.id), [shownPage?.id]);
   const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
@@ -80,7 +88,7 @@ export function App() {
   // Every hook above must run on every render — this is the first point an early return is safe.
   const screen = renderScreen();
   return (
-    <>
+    <PluginWidgetContext.Provider value={widgets.context}>
       {screen}
       <SettingsScreen open={settingsOpen} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
       <UpdateScreen update={update} />
@@ -96,7 +104,7 @@ export function App() {
           durationMs={12_000}
         />
       )}
-    </>
+    </PluginWidgetContext.Provider>
   );
 
   function renderScreen() {
@@ -176,6 +184,7 @@ export function App() {
       onSettingsOpenChange={setSettingsOpen}
       update={update}
       webPages={webPages}
+      pluginLive={appVisible}
     />
   );
   }

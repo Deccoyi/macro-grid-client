@@ -7,7 +7,7 @@ import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys"
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
-import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
+import { ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
 
 /** A server whose version does not fit this app: what to tell the person, with the versions involved. */
@@ -30,7 +30,10 @@ function omitKeys<T>(record: Record<string, T>, keys: Iterable<string>): Record<
  * to the last used server on launch, and shows the cached layout of a host while the first real one is
  * still in flight.
  */
-export function useServerConnection() {
+export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPluginWidgetMessage" | "onAsset" | "onWelcome">) {
+  // The widget host is made after this hook runs; connections made later read it through this ref.
+  const widgetEventsRef = useRef(widgetEvents);
+  widgetEventsRef.current = widgetEvents;
   const [initialHost] = useState(() => readText(HOST_KEY) ?? "");
   const [initialCache] = useState(() => loadLayoutCache(initialHost));
 
@@ -148,6 +151,9 @@ export function useServerConnection() {
           actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
         },
         onPairingError: setPairingError,
+        onPluginWidgetMessage: (type, data) => widgetEventsRef.current?.onPluginWidgetMessage?.(type, data),
+        onAsset: (hash, data) => widgetEventsRef.current?.onAsset?.(hash, data) ?? false,
+        onWelcome: () => widgetEventsRef.current?.onWelcome?.(),
       },
     );
     connectionRef.current = connection;

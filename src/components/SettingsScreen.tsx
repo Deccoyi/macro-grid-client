@@ -4,7 +4,7 @@ import { setLanguageSetting, t, type LanguageSetting } from "../i18n";
 import { useBackToClose } from "../hooks/useBackToClose";
 import { useLanguage } from "../hooks/useLanguage";
 import type { UpdateController } from "../hooks/useUpdate";
-import type { AppSettings, OrientationSetting, UpdateNetworkSetting } from "../storage/settings";
+import type { AppSettings, OrientationSetting, PluginWidgetLimitSetting, UpdateNetworkSetting } from "../storage/settings";
 import { versionToString } from "../update/releaseVersion";
 import { colors, sectionLabelStyle, selectedTint } from "../theme";
 
@@ -16,6 +16,8 @@ const ORIENTATION_LABEL_KEYS = {
 } as const;
 const LANGUAGES: LanguageSetting[] = ["auto", "tr", "en"];
 const LANGUAGE_LABEL_KEYS = { auto: "settings.language.auto", tr: "settings.language.tr", en: "settings.language.en" } as const;
+const WIDGET_LIMITS: PluginWidgetLimitSetting[] = ["auto", "custom", "none"];
+const WIDGET_LIMIT_LABEL_KEYS = { auto: "settings.widgets.limit.auto", custom: "settings.widgets.limit.custom", none: "settings.widgets.limit.none" } as const;
 const NETWORKS: UpdateNetworkSetting[] = ["wifi", "any"];
 const NETWORK_LABEL_KEYS = { wifi: "settings.updates.network.wifi", any: "settings.updates.network.any" } as const;
 
@@ -173,6 +175,44 @@ export function SettingsScreen({ open, settings, onChange, onClose, update }: Se
           </button>
           <div style={hintStyle}>{t("settings.web.clear.hint")}</div>
           {webDataCleared !== null && <div style={statusStyle}>{webDataCleared ? t("settings.web.cleared") : t("settings.web.clearFailed")}</div>}
+        </div>
+
+        <div style={sectionStyle}>{t("settings.section.widgets")}</div>
+        <label style={rowStyle}>
+          <div>
+            <div style={labelStyle}>{t("settings.widgets.show")}</div>
+            <div style={hintStyle}>{t("settings.widgets.show.hint")}</div>
+          </div>
+          <Switch checked={settings.showPluginWidgets} onChange={(showPluginWidgets) => onChange({ ...settings, showPluginWidgets })} />
+        </label>
+        <div style={blockStyle}>
+          <div style={labelStyle}>{t("settings.widgets.limit")}</div>
+          <div style={segmentRowStyle}>
+            {WIDGET_LIMITS.map((mode) => (
+              <button key={mode} onClick={() => onChange({ ...settings, pluginWidgetLimit: mode })} style={segmentStyle(settings.pluginWidgetLimit === mode)}>
+                {mode === "custom" && settings.pluginWidgetLimit === "custom" ? `${t(WIDGET_LIMIT_LABEL_KEYS[mode])}: ${settings.pluginWidgetLimitCount}` : t(WIDGET_LIMIT_LABEL_KEYS[mode])}
+              </button>
+            ))}
+          </div>
+          {settings.pluginWidgetLimit === "custom" && (
+            <div style={segmentRowStyle}>
+              <button
+                aria-label="-"
+                onClick={() => onChange({ ...settings, pluginWidgetLimitCount: Math.max(1, settings.pluginWidgetLimitCount - 1) })}
+                style={actionButtonStyle}
+              >
+                −
+              </button>
+              <button
+                aria-label="+"
+                onClick={() => onChange({ ...settings, pluginWidgetLimitCount: Math.min(64, settings.pluginWidgetLimitCount + 1) })}
+                style={actionButtonStyle}
+              >
+                +
+              </button>
+            </div>
+          )}
+          <div style={hintStyle}>{t("settings.widgets.limit.hint")}</div>
         </div>
 
         <div style={sectionStyle}>{t("settings.section.language")}</div>

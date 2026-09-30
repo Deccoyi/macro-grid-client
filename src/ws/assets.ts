@@ -62,6 +62,14 @@ export function putAsset(hash: string, data: string): void {
   saveIndex();
 }
 
+/**
+ * A plugin widget's `props.runtime` (script and images as `asset:` references). It is not resolved or cached here: the script is fetched and run by
+ * the widget host on demand, and a large script must not fill the persistent asset cache.
+ */
+function isWidgetRuntime(key: string, value: unknown): boolean {
+  return key === "runtime" && value !== null && typeof value === "object" && typeof (value as { code?: unknown }).code === "string";
+}
+
 /** Every distinct `asset:<hash>` reference anywhere inside a value. */
 export function collectAssetRefs(value: unknown, out: Set<string> = new Set()): Set<string> {
   if (typeof value === "string") {
@@ -70,7 +78,7 @@ export function collectAssetRefs(value: unknown, out: Set<string> = new Set()): 
   } else if (Array.isArray(value)) {
     for (const item of value) collectAssetRefs(item, out);
   } else if (value !== null && typeof value === "object") {
-    for (const item of Object.values(value)) collectAssetRefs(item, out);
+    for (const [key, item] of Object.entries(value)) if (!isWidgetRuntime(key, item)) collectAssetRefs(item, out);
   }
   return out;
 }
@@ -121,6 +129,7 @@ function resolveNode(value: unknown): unknown {
   } else {
     let copy: Record<string, unknown> | null = null;
     for (const [key, item] of Object.entries(value)) {
+      if (isWidgetRuntime(key, item)) continue;
       const next = resolveNode(item);
       if (next !== item) {
         copy ??= { ...(value as Record<string, unknown>) };

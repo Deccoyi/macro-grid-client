@@ -4,6 +4,7 @@ import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
 import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
 import { checkServerVersion, type ServerCompat } from "./serverCompat";
+import { pluginWidgetsSupported } from "../widgets/support";
 
 /**
  * Every frame is { type, data }, matching MacroGrid.Protocol.Envelope server-side. This client
@@ -100,11 +101,18 @@ export interface ConnectionEvents {
   /** A pairing attempt was refused — wrong PIN, blocked after too many wrong PINs, or pairing not open on
    * the computer. Not called for the initial "not paired yet" state before any PIN was ever submitted. */
   onPairingError: (error: PairingError) => void;
+  /** A message of a plugin widget (`plugin.widget.reply`, `.vars`, `.event`); the widget host reads them. Optional. */
+  onPluginWidgetMessage?: (type: string, data: unknown) => void;
+  /** An asset arrived. Returns true when the widget host asked for it (a script or image of a plugin widget): it is then not put in the
+   * persistent cache, which is for icons. Optional. */
+  onAsset?: (hash: string, data: string | null) => boolean;
+  /** The server accepted this connection (also after a reconnect): the widget host asks again for what its running widgets need. Optional. */
+  onWelcome?: () => void;
 }
 
 const MAX_BACKOFF_MS = 10_000;
 /** Optional protocol features this client understands — see ClientCapabilities.cs server-side. */
-const CAPABILITIES = ["assets", "layout.patch"];
+const CAPABILITIES = ["assets", "layout.patch", ...(pluginWidgetsSupported() ? ["plugin-widgets"] : [])];
 /** How long a layout waits for the assets it references before it is shown with those icons blank. */
 const ASSET_WAIT_MS = 5_000;
 
@@ -241,6 +249,7 @@ export class ServerConnection {
         // after a "pairing_required" error, which otherwise leaves the status stuck on that value
         // forever even though the connection is now fully working.
         this.events.onStatusChange("connected");
+        this.events.onWelcome?.();
         this.events.onServerVersion?.(checkServerVersion(data.serverVersion, REQUIRED_MACRO_GRID), data.serverVersion, REQUIRED_MACRO_GRID);
         break;
       }
@@ -293,13 +302,19 @@ export class ServerConnection {
         } else if (data.code === "action_failed") this.events.onActionError(data.message);
         break;
       }
+      case "plugin.widget.reply":
+      case "plugin.widget.vars":
+      case "plugin.widget.event":
+        this.events.onPluginWidgetMessage?.(envelope.type, envelope.data);
+        break;
       default:
         break;
     }
   }
 
   private handleAsset(asset: AssetData): void {
-    if (asset.data) putAsset(asset.hash, asset.data);
+    const forWidget = this.events.onAsset?.(asset.hash, asset.data ?? null) === true;
+    if (asset.data && !forWidget) putAsset(asset.hash, asset.data);
     const waiters = this.assetWaiters.get(asset.hash);
     this.assetWaiters.delete(asset.hash);
     waiters?.forEach((wake) => wake());

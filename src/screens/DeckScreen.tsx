@@ -62,6 +62,8 @@ interface DeckScreenProps {
   onSettingsOpenChange: (open: boolean) => void;
   update: UpdateController;
   webPages: WebPagesState;
+  /** False while the app is not in front: plugin widgets are paused then. */
+  pluginLive: boolean;
 }
 
 /** The address of the server without its port: a web widget must never show it (the page would be the server itself). */
@@ -98,6 +100,7 @@ export function DeckScreen({
   onSettingsOpenChange,
   update,
   webPages,
+  pluginLive,
 }: DeckScreenProps) {
   const blockedHosts = useMemo(() => [serverHostName(activeHost)], [activeHost]);
   const webTexts = useMemo(() => ({ empty: t("web.empty"), refused: t("web.refused"), off: webPages.offText }), [webPages.offText]);
@@ -128,6 +131,7 @@ export function DeckScreen({
               webLive={webPages.live}
               webBlockedHosts={blockedHosts}
               webTexts={webTexts}
+              pluginLive={pluginLive}
               haptics
               onPress={() => onWidgetEvent("widget.down", widget.id)}
               onRelease={() => onWidgetEvent("widget.up", widget.id)}

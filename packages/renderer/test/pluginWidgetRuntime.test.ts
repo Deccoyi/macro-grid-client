@@ -263,7 +263,7 @@ describe("plugin widget runtime", () => {
 
   it("tells which plugins have live widgets, before a worker starts and after the last one of a plugin ends", async () => {
     const seen: string[][] = [];
-    const { mount } = setup({}, { onLiveChange: (plugins) => seen.push(plugins) });
+    const { mount } = setup({}, { onLiveChange: (plugins) => { seen.push(plugins); } });
 
     const a = (await mount({}, { plugin: "gauges" })).instance;
     const b = (await mount({}, { plugin: "clock" })).instance;

@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -19,6 +20,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WidgetGuardPlugin.class);
         super.onCreate(savedInstanceState);
         lockDownWebPages();
+        routeBackToPages();
     }
 
     /**
@@ -38,6 +40,29 @@ public class MainActivity extends BridgeActivity {
         // A page in a web widget is a third-party frame of the app's own origin. Without this its cookies are dropped, so a cookie notice
         // came back every time and a login was never kept. The cookies stay in the jar of the site that set them; the app's own data is not cookie based.
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+    }
+
+    /**
+     * Without this, back (button or edge swipe) finished the activity even while a full-screen page such as Settings was open. A page opened
+     * with useBackToClose owns a history entry marked macroGridPage: back pops that entry and the page closes. Otherwise back leaves the app as
+     * before. Only the marker is checked, not WebView.canGoBack(): a web widget's iframe also adds history entries, and back must not step those.
+     */
+    private void routeBackToPages() {
+        WebView webView = getBridge().getWebView();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                webView.evaluateJavascript(
+                    "(function(){var s=history.state;if(s&&s.macroGridPage){history.back();return true}return false})()",
+                    result -> {
+                        if ("true".equals(result)) return;
+                        setEnabled(false);
+                        getOnBackPressedDispatcher().onBackPressed();
+                        setEnabled(true);
+                    }
+                );
+            }
+        });
     }
 
     // Re-applies kiosk immersive mode after it gets cleared by a focus loss (notification shade, an

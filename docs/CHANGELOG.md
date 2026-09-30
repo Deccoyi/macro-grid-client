@@ -3,6 +3,8 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+### Fixed
+- **The app no longer closes when the page view crashes:** if a web page uses up all its memory, the deck reloads instead of the app shutting down.
 
 ## 0.4.1 - 2026-09-29
 ### Changed

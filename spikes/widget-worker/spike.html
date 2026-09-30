@@ -1,0 +1,369 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<!-- Same CSP as the real app page. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src http: https:" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Widget worker spike (phase 0)</title>
+<style>
+  body { background:#111; color:#ddd; font:13px monospace; margin:0; padding:8px; }
+  #out { white-space:pre-wrap; }
+  #grid { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-top:8px; }
+  canvas { width:100%; height:80px; background:#000; }
+</style>
+</head>
+<body>
+<div id="out">spike loaded</div>
+<div id="grid"></div>
+<script>
+"use strict";
+// ---- Worker bootstrap (a string: it becomes a blob worker). Everything talks over one MessagePort. ----
+const WORKER_SRC = `
+let port, canvas, ctx, gl, running = false, frames = 0, fps = 30, kind = "2d", timer = 0, last = 0;
+const send = (m) => port.postMessage(m);
+function probe() {
+  const r = {};
+  const t = (name, fn) => { try { const v = fn(); r[name] = (v && v.then) ? "async" : "ok"; return v; } catch (e) { r[name] = "blocked:" + (e && e.name); } };
+  const asyncT = async (name, fn) => { try { await fn(); r[name] = "ok"; } catch (e) { r[name] = "blocked:" + (e && e.name); } };
+  r.origin = String(self.origin); r.href = self.location.href.slice(0, 40);
+  r.crossOriginIsolated = String(self.crossOriginIsolated);
+  r.perfMemory = String(typeof performance.memory);
+  r.hasIndexedDB = String(typeof indexedDB); r.hasCaches = String(typeof caches); r.hasLocalStorage = String(typeof localStorage);
+  r.hasOffscreen = String(typeof OffscreenCanvas); r.hasWebGL2 = String(!!(typeof OffscreenCanvas !== "undefined" && new OffscreenCanvas(1,1).getContext("webgl2")));
+  t("eval", () => eval("1+1"));
+  t("newFunction", () => new Function("return 1")());
+  t("importScripts_http", () => importScripts("http://127.0.0.1:1/x.js"));
+  t("nestedWorker", () => new Worker(URL.createObjectURL(new Blob(["1"]))));
+  t("wasm_sync", () => new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0])));
+  const jobs = [];
+  jobs.push(asyncT("wasm_instantiate", () => WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0]))));
+  jobs.push(asyncT("fetch_origin", () => fetch(self.__appOrigin + "/index.html")));
+  jobs.push(asyncT("fetch_external", () => fetch("https://example.com/", { mode: "no-cors" })));
+  jobs.push(asyncT("fetch_lan", () => fetch(self.__lan, { mode: "no-cors" })));
+  jobs.push(asyncT("xhr", () => new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open("GET", self.__appOrigin + "/index.html"); x.onload = res; x.onerror = () => rej(new Error("xhr")); x.send(); })));
+  jobs.push(asyncT("websocket", () => new Promise((res, rej) => { const w = new WebSocket("ws://" + self.__lanHost); w.onopen = () => { w.close(); res(); }; w.onerror = () => rej(new Error("ws")); setTimeout(() => rej(new Error("timeout")), 2500); })));
+  jobs.push(asyncT("indexedDB_open", () => new Promise((res, rej) => { const q = indexedDB.open("x"); q.onsuccess = res; q.onerror = () => rej(q.error || new Error("idb")); })));
+  jobs.push(asyncT("caches_open", () => caches.open("x")));
+  jobs.push(asyncT("createImageBitmap", () => createImageBitmap(new OffscreenCanvas(4, 4))));
+  return Promise.all(jobs).then(() => r);
+}
+const BTN = [{ id: "A", x: 10, y: 10, w: 100, h: 60 }, { id: "B", x: 130, y: 10, w: 100, h: 60 }, { id: "C", x: 10, y: 90, w: 220, h: 60 }];
+let pressed = null, presses = 0;
+function ui() { ctx = canvas.getContext("2d"); drawUi(); }
+function drawUi() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const b of BTN) { ctx.fillStyle = pressed === b.id ? "#f80" : "#08f"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(b.id + " " + presses, b.x + 12, b.y + 38); }
+}
+function loop(now) {
+  if (!running) return;
+  timer = setTimeout(() => loop(performance.now()), 1000 / fps);
+  frames++;
+  if (kind === "2d") {
+    const w = canvas.width, h = canvas.height, t = now / 1000;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#08f"; ctx.beginPath(); ctx.arc(w / 2 + Math.sin(t * 2) * w * 0.3, h / 2, h * 0.3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = h * 0.3 + "px sans-serif"; ctx.fillText(String(frames), 8, h * 0.9);
+  } else if (kind === "gl" || kind === "glheavy") {
+    gl.clearColor((Math.sin(now / 500) + 1) / 2, 0.2, 0.4, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    if (kind === "glheavy") { for (let i = 0; i < 60; i++) gl.drawArrays(gl.TRIANGLES, 0, 3); gl.finish(); }
+  }
+}
+function start(msg) {
+  kind = msg.kind; fps = msg.fps || 30;
+  if (kind === "2d") ctx = canvas.getContext("2d");
+  else if (kind === "gl" || kind === "glheavy") {
+    gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+    if (kind === "glheavy") {
+      const vs = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs, "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}"); gl.compileShader(vs);
+      const fs = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs, "precision highp float;void main(){float a=0.;for(int i=0;i<2000;i++){a+=sin(float(i)*gl_FragCoord.x)*cos(float(i)*gl_FragCoord.y);}gl_FragColor=vec4(a,0.5,0.5,1.);}"); gl.compileShader(fs);
+      const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr); gl.useProgram(pr);
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
+      const l = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
+    }
+  }
+  running = true; loop(performance.now());
+}
+self.onmessage = (e) => {
+  const m = e.data;
+  if (m.type !== "init") return;
+  port = m.port; canvas = m.canvas; self.__appOrigin = m.appOrigin; self.__lan = m.lan; self.__lanHost = m.lanHost;
+  port.onmessage = async (ev) => {
+    const c = ev.data;
+    try { await handle(c); } catch (err) { send({ type: "worker-exception", msg: String(err && err.stack || err) }); }
+  };
+  async function handle(c) {
+    if (c.type === "ping") send({ type: "pong", id: c.id });
+    else if (c.type === "probe") send({ type: "probe", result: await probe() });
+    else if (c.type === "start") { start(c); send({ type: "started" }); }
+    else if (c.type === "stop") { running = false; clearTimeout(timer); send({ type: "stopped", frames }); }
+    else if (c.type === "frames") send({ type: "frames", frames });
+    else if (c.type === "ui") { ui(); send({ type: "uiReady" }); }
+    else if (c.type === "pointer") {
+      const hit = BTN.find((b) => c.x >= b.x && c.x <= b.x + b.w && c.y >= b.y && c.y <= b.y + b.h);
+      if (c.phase === "down" && hit) { pressed = hit.id; presses++; drawUi(); }
+      if (c.phase === "up") { pressed = null; drawUi(); }
+      send({ type: "pointerAck", seq: c.seq, phase: c.phase, hit: hit ? hit.id : null, presses });
+    }
+    else if (c.type === "busy") { send({ type: "busyStarted" }); for (;;) { } }
+    else if (c.type === "mem") {
+      const chunks = []; let mb = 0;
+      const tick = () => { for (let i = 0; i < 4; i++) { chunks.push(new Uint8Array(16 * 1024 * 1024).fill(1)); mb += 16; } send({ type: "mem", mb }); setTimeout(tick, 20); };
+      tick();
+    }
+    else if (c.type === "canvasbomb") {
+      const cs = []; let n = 0;
+      const tick = () => { try { const o = new OffscreenCanvas(4096, 4096); const x = o.getContext("2d"); x.fillRect(0, 0, 4096, 4096); cs.push(o); n++; send({ type: "canvasbomb", n }); } catch (e) { send({ type: "canvasbomb-err", n, e: String(e) }); return; } setTimeout(tick, 30); };
+      tick();
+    }
+  }
+  send({ type: "ready", hasCanvas: !!canvas });
+};
+`;
+
+
+const LIB_TAIL = `
+let port;
+self.onmessage = (e) => { const m = e.data; if (m.type !== "init") return; port = m.port; const canvas = m.canvas;
+  port.onmessage = async (ev) => { const c = ev.data;
+    try {
+      if (c.type === "ping") port.postMessage({ type: "pong" });
+      if (c.type === "run") {
+        const t0 = performance.now(); const N = 60; let chart, update;
+        if (c.lib === "echarts") {
+          echarts.setPlatformAPI({ createCanvas: () => new OffscreenCanvas(1, 1) });
+          chart = echarts.init(canvas, null, { renderer: "canvas", width: c.w, height: c.h, devicePixelRatio: c.dpr });
+          const data = Array.from({ length: N }, (_, i) => Math.sin(i / 5) * 50 + 50);
+          chart.setOption({ animation: true, animationDurationUpdate: 300, xAxis: { type: "category", data: data.map((_, i) => i) }, yAxis: { type: "value" }, series: [{ type: "line", smooth: true, data, areaStyle: {} }, { type: "bar", data: data.map((v) => v / 2) }] });
+          update = () => { data.push(Math.random() * 100); data.shift(); chart.setOption({ series: [{ data }, { data: data.map((v) => v / 2) }] }); };
+        } else {
+          const data = Array.from({ length: N }, (_, i) => Math.sin(i / 5) * 50 + 50);
+          canvas.style = {}; canvas.width = c.w * c.dpr; canvas.height = c.h * c.dpr;
+          chart = new Chart(canvas, { type: "line", data: { labels: data.map((_, i) => i), datasets: [{ data, fill: true, tension: 0.4 }] }, options: { responsive: false, animation: { duration: 300 } } });
+          update = () => { data.push(Math.random() * 100); data.shift(); chart.update(); };
+        }
+        const initMs = performance.now() - t0; const durs = []; let frames = 0;
+        const end = performance.now() + c.seconds * 1000;
+        await new Promise((res) => { const tick = () => { const a = performance.now(); update(); durs.push(performance.now() - a); frames++; if (performance.now() < end) setTimeout(tick, 100); else res(); }; tick(); });
+        durs.sort((a, b) => a - b);
+        port.postMessage({ type: "runDone", initMs: +initMs.toFixed(0), updates: frames, updMeanMs: +(durs.reduce((a, b) => a + b, 0) / durs.length).toFixed(2), updMaxMs: +durs[durs.length - 1].toFixed(1) });
+      }
+      if (c.type === "heapbomb") {
+        // real JS heap growth (objects, not typed arrays)
+        const keep = []; let n = 0; const tick = () => { for (let i = 0; i < 200000; i++) keep.push({ a: i, b: [i, i + 1], s: "x" + i }); n += 200000; port.postMessage({ type: "heap", n }); setTimeout(tick, 5); }; tick();
+      }
+    } catch (err) { port.postMessage({ type: "worker-exception", msg: String(err && err.stack || err) }); }
+  };
+  port.postMessage({ type: "ready" });
+};`;
+const libTexts = {};
+async function libCode(lib) { if (!libTexts[lib]) libTexts[lib] = await (await fetch(lib === "echarts" ? "echarts.min.js" : "chart.umd.min.js")).text(); return libTexts[lib] + ";\n" + LIB_TAIL; }
+
+const LAUNCHER_CSP = "default-src 'none'; script-src blob: 'unsafe-inline' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'none'";
+const LAUNCHER_SRC = (csp) => `<meta http-equiv="Content-Security-Policy" content="${csp}"><script>
+const workers = new Map();
+addEventListener("message", (e) => {
+  const m = e.data;
+  if (m.type === "start") {
+    try {
+      const url = URL.createObjectURL(new Blob([m.code], { type: "text/javascript" }));
+      const w = new Worker(url, m.module ? { type: "module" } : undefined);
+      w.onerror = (ev) => { parent.postMessage({ type: "worker-error", id: m.id, msg: String(ev.message) }, "*"); };
+      workers.set(m.id, w);
+      const transfer = [m.port]; if (m.canvas) transfer.push(m.canvas);
+      w.postMessage({ type: "init", canvas: m.canvas, port: m.port, appOrigin: m.appOrigin, lan: m.lan, lanHost: m.lanHost }, transfer);
+      parent.postMessage({ type: "worker-created", id: m.id }, "*");
+    } catch (err) { parent.postMessage({ type: "launcher-error", id: m.id, msg: String(err && err.name) + ": " + String(err && err.message) }, "*"); }
+  } else if (m.type === "kill") { const w = workers.get(m.id); if (w) { w.terminate(); workers.delete(m.id); } parent.postMessage({ type: "killed", id: m.id }, "*"); }
+});
+parent.postMessage({ type: "launcher-ready" }, "*");
+<\/script>`;
+
+const out = document.getElementById("out");
+const log = (s) => { out.textContent += "\n" + s; console.log("SPIKE " + s); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let nextId = 1;
+const LAN_HOST = new URLSearchParams(location.search).get("lan") || "192.168.1.1:80";
+
+// ---- Launcher frame ----
+async function makeLauncher(csp = LAUNCHER_CSP, sandbox = "allow-scripts") {
+  const f = document.createElement("iframe");
+  f.setAttribute("sandbox", sandbox);
+  f.style.cssText = "width:0;height:0;border:0;position:absolute;left:-9999px";
+  const ready = new Promise((res) => {
+    const on = (e) => { if (e.source === f.contentWindow && e.data && e.data.type === "launcher-ready") { removeEventListener("message", on); res(); } };
+    addEventListener("message", on);
+  });
+  f.srcdoc = LAUNCHER_SRC(csp);
+  document.body.appendChild(f);
+  const timeout = sleep(3000).then(() => { throw new Error("launcher never became ready (frame blocked?)"); });
+  await Promise.race([ready, timeout]);
+  return f;
+}
+
+// Starts a worker through the launcher; resolves with a handle. canvas: HTMLCanvasElement or null.
+async function startWorker(launcher, { canvas = null, code = WORKER_SRC, module = false } = {}) {
+  const id = nextId++;
+  const ch = new MessageChannel();
+  const off = canvas ? canvas.transferControlToOffscreen() : null;
+  const h = { id, port: ch.port1, launcher, listeners: new Set() };
+  ch.port1.onmessage = (e) => { for (const l of h.listeners) l(e.data); };
+  const created = new Promise((res, rej) => {
+    const on = (e) => {
+      if (e.source !== launcher.contentWindow || !e.data || e.data.id !== id) return;
+      if (e.data.type === "worker-created") { removeEventListener("message", on); res(); }
+      if (e.data.type === "launcher-error" || e.data.type === "worker-error") { removeEventListener("message", on); rej(new Error(e.data.msg)); }
+    };
+    addEventListener("message", on);
+  });
+  const t = [ch.port2]; if (off) t.push(off);
+  launcher.contentWindow.postMessage({ type: "start", id, code, module, canvas: off, port: ch.port2, appOrigin: location.origin, lan: "http://" + LAN_HOST + "/", lanHost: LAN_HOST }, "*", t);
+  await Promise.race([created, sleep(3000).then(() => { throw new Error("worker not created in 3 s"); })]);
+  h.ask = (msg, type, timeoutMs = 5000) => new Promise((res, rej) => {
+    const l = (d) => { if (d.type === type) { h.listeners.delete(l); res(d); } else if (d.type === "worker-exception") { h.listeners.delete(l); rej(new Error(d.msg)); } };
+    h.listeners.add(l); h.port.postMessage(msg);
+    setTimeout(() => { h.listeners.delete(l); rej(new Error("timeout waiting for " + type)); }, timeoutMs);
+  });
+  h.kill = () => new Promise((res) => {
+    const on = (e) => { if (e.source === launcher.contentWindow && e.data && e.data.type === "killed" && e.data.id === id) { removeEventListener("message", on); res(); } };
+    addEventListener("message", on); launcher.contentWindow.postMessage({ type: "kill", id }, "*");
+  });
+  return h;
+}
+
+// Main-thread frame stats over a window of ms (rAF deltas).
+function frameStats(ms) {
+  return new Promise((res) => {
+    const d = []; let prev = performance.now(); const end = prev + ms;
+    (function tick(now) { d.push(now - prev); prev = now; if (now < end) requestAnimationFrame(tick); else { d.shift(); d.sort((a, b) => a - b); res({ n: d.length, mean: +(d.reduce((a, b) => a + b, 0) / d.length).toFixed(1), p95: +d[Math.floor(d.length * 0.95)].toFixed(1), max: +d[d.length - 1].toFixed(1) }); } })(prev);
+  });
+}
+const cleanup = () => { document.getElementById("grid").replaceChildren(); document.querySelectorAll("iframe").forEach((f) => f.remove()); };
+
+// ---- Tests ----
+const tests = {
+  async env() {
+    return { ua: navigator.userAgent, origin: location.origin, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency, mem: navigator.deviceMemory, offscreen: typeof OffscreenCanvas, transfer: typeof HTMLCanvasElement.prototype.transferControlToOffscreen };
+  },
+  // (a)+(b): worker through the sandboxed launcher, with a canvas and a port transferred in; probe of every API.
+  async launcherProbe() {
+    const l = await makeLauncher();
+    const c = document.createElement("canvas"); c.width = 200; c.height = 100; document.getElementById("grid").appendChild(c);
+    const w = await startWorker(l, { canvas: c });
+    const ready = await w.ask({ type: "ping", id: 1 }, "pong");
+    const probe = (await w.ask({ type: "probe" }, "probe", 15000)).result;
+    await w.ask({ type: "start", kind: "2d", fps: 30 }, "started"); await sleep(500);
+    const frames = (await w.ask({ type: "frames" }, "frames")).frames;
+    await w.kill(); l.remove();
+    return { pong: !!ready, framesIn500ms: frames, probe };
+  },
+  // Control: the same worker made directly by the app page (app origin, app CSP).
+  async appProbe() {
+    const url = URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" }));
+    const w = new Worker(url); const ch = new MessageChannel();
+    const c = document.createElement("canvas"); const off = c.transferControlToOffscreen();
+    w.postMessage({ type: "init", canvas: off, port: ch.port2, appOrigin: location.origin, lan: "http://" + LAN_HOST + "/", lanHost: LAN_HOST }, [ch.port2, off]);
+    const r = await new Promise((res) => { ch.port1.onmessage = (e) => { if (e.data.type === "ready") ch.port1.postMessage({ type: "probe" }); if (e.data.type === "probe") res(e.data.result); }; });
+    w.terminate(); return r;
+  },
+  // (a) variants: which worker kinds does the launcher CSP/sandbox allow?
+  async workerKinds() {
+    const res = {};
+    const l = await makeLauncher();
+    try { const w = await startWorker(l, { canvas: null }); await w.ask({ type: "ping", id: 1 }, "pong"); res.blobClassic = "ok"; await w.kill(); } catch (e) { res.blobClassic = "fail:" + e.message; }
+    try { const w = await startWorker(l, { canvas: null, module: true, code: "self.onmessage=(e)=>{const m=e.data; m.port.onmessage=(x)=>{if(x.data.type==='ping')m.port.postMessage({type:'pong'})}; m.port.postMessage({type:'ready'})}" }); await w.ask({ type: "ping" }, "pong"); res.blobModule = "ok"; await w.kill(); } catch (e) { res.blobModule = "fail:" + e.message; }
+    l.remove();
+    // sandbox without allow-scripts must not run anything
+    try { await makeLauncher(LAUNCHER_CSP, ""); res.noAllowScripts = "RAN (bad)"; } catch (e) { res.noAllowScripts = "did not run (good)"; }
+    cleanup(); return res;
+  },
+  // (c) busy loop worker: does the deck stay fluid, does terminate recover?
+  async busy() {
+    const l = await makeLauncher();
+    const other = document.createElement("canvas"); document.getElementById("grid").appendChild(other);
+    const wOther = await startWorker(l, { canvas: other }); await wOther.ask({ type: "start", kind: "2d", fps: 30 }, "started");
+    const wBusy = await startWorker(l, {});
+    const before = await frameStats(1500);
+    wBusy.port.postMessage({ type: "busy" });
+    const during = await frameStats(3000);
+    const f1 = (await wOther.ask({ type: "frames" }, "frames")).frames; await sleep(1000); const f2 = (await wOther.ask({ type: "frames" }, "frames")).frames;
+    const t0 = performance.now(); await wBusy.kill();
+    const after = await frameStats(1500);
+    const pingOk = await wOther.ask({ type: "ping", id: 9 }, "pong").then(() => true, () => false);
+    cleanup(); return { before, during, otherWorkerFramesPerSecDuringBusy: f2 - f1, killMs: +(performance.now() - t0).toFixed(0), after, otherWorkerAliveAfter: pingOk };
+  },
+  // (d) N animated workers at the given fps, kind 2d | gl | glheavy.
+  async draw({ n = 8, fps = 30, kind = "2d", seconds = 8, w = 260, h = 160 } = {}) {
+    cleanup();
+    const l = await makeLauncher(); const ws = []; const t0 = performance.now();
+    for (let i = 0; i < n; i++) { const c = document.createElement("canvas"); c.width = w; c.height = h; document.getElementById("grid").appendChild(c); ws.push(await startWorker(l, { canvas: c })); }
+    for (const x of ws) await x.ask({ type: "start", kind, fps }, "started");
+    const startMs = +(performance.now() - t0).toFixed(0);
+    const stats = await frameStats(seconds * 1000);
+    const frames = []; for (const x of ws) frames.push((await x.ask({ type: "frames" }, "frames")).frames);
+    const t1 = performance.now(); for (const x of ws) await x.kill();
+    const info = { n, fps, kind, canvas: w + "x" + h, startAllMs: startMs, deck: stats, workerFramesPerSec: +(frames.reduce((a, b) => a + b, 0) / frames.length / seconds).toFixed(1), killAllMs: +(performance.now() - t1).toFixed(0), jsHeapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(0) : null };
+    cleanup(); return info;
+  },
+  // Keeps workers running until told to stop (for CPU/battery sampling with the shell).
+  async hold({ n = 8, fps = 30 } = {}) {
+    cleanup(); const l = await makeLauncher(); window.__hold = [];
+    for (let i = 0; i < n; i++) { const c = document.createElement("canvas"); c.width = 260; c.height = 160; document.getElementById("grid").appendChild(c); const x = await startWorker(l, { canvas: c }); await x.ask({ type: "start", kind: "2d", fps }, "started"); window.__hold.push(x); }
+    return "holding " + n;
+  },
+  async release() { for (const x of window.__hold || []) await x.kill(); cleanup(); window.__hold = []; return "released"; },
+  // (c) memory bomb: run last; the page may die. Progress is logged so the last line shows where.
+  async memBomb() {
+    const l = await makeLauncher(); const wA = await startWorker(l, {});
+    let last = 0; wA.listeners.add((d) => { if (d.type === "mem") { last = d.mb; if (d.mb % 256 === 0) log("membomb allocated " + d.mb + " MB"); } });
+    wA.port.postMessage({ type: "mem" });
+    const t0 = performance.now(); let hb = 0;
+    while (performance.now() - t0 < 60000) { await sleep(500); hb++; if (hb % 4 === 0) log("membomb main thread alive, worker at " + last + " MB"); }
+    return { lastMB: last, note: "page survived 60 s" };
+  },
+
+  // (e) chart libraries inside the sandboxed worker. lib: echarts | chartjs
+  async lib({ lib = "echarts", n = 1, seconds = 6, w = 300, h = 200 } = {}) {
+    cleanup(); const l = await makeLauncher(); const code = await libCode(lib); const ws = [];
+    for (let i = 0; i < n; i++) { const c = document.createElement("canvas"); c.width = w; c.height = h; document.getElementById("grid").appendChild(c); ws.push(await startWorker(l, { canvas: c, code })); }
+    const stat = frameStats(seconds * 1000 + 500);
+    const res = await Promise.all(ws.map((x) => x.ask({ type: "run", lib, w, h, dpr: 2, seconds }, "runDone", 30000).catch((e) => ({ error: e.message }))));
+    const deck = await stat; for (const x of ws) await x.kill(); cleanup();
+    return { lib, n, deck, workers: res };
+  },
+  async heapBomb() {
+    const l = await makeLauncher(); const wA = await startWorker(l, { code: LIB_TAIL }); let last = 0;
+    wA.listeners.add((d) => { if (d.type === "heap") last = d.n; if (d.type === "worker-exception") log("heapbomb exception " + d.msg.slice(0, 80)); });
+    wA.port.postMessage({ type: "heapbomb" });
+    for (let i = 0; i < 90; i++) { await sleep(500); if (i % 6 === 0) log("heapbomb alive, objects " + last); }
+    return { objects: last, note: "page survived 45 s" };
+  },
+
+  // Touch: pointer events on the app page's canvas are forwarded to the worker, which hit-tests its own drawn buttons.
+  // Waits for real touches (adb input) and reports the round trip from event to the worker's acknowledgement.
+  async touch({ seconds = 12 } = {}) {
+    cleanup(); const l = await makeLauncher();
+    const c = document.createElement("canvas"); c.width = 240; c.height = 160; c.style.cssText = "width:240px;height:160px;touch-action:none"; document.getElementById("grid").appendChild(c);
+    const w = await startWorker(l, { canvas: c }); await w.ask({ type: "ui" }, "uiReady");
+    const sent = new Map(), rt = [], log2 = []; let seq = 0;
+    w.listeners.add((d) => { if (d.type === "pointerAck") { const t0 = sent.get(d.seq); if (t0 !== undefined) { rt.push(performance.now() - t0); sent.delete(d.seq); } log2.push(d.phase + ":" + d.hit); } });
+    const fwd = (phase) => (e) => { const r = c.getBoundingClientRect(); const id = ++seq; sent.set(id, performance.now()); w.port.postMessage({ type: "pointer", phase, seq: id, x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) }); };
+    c.addEventListener("pointerdown", fwd("down")); c.addEventListener("pointermove", fwd("move")); c.addEventListener("pointerup", fwd("up"));
+    const r = c.getBoundingClientRect(); window.__touchBox = { x: r.left, y: r.top, w: r.width, h: r.height, dpr: devicePixelRatio, sx: screenX, sy: screenY };
+    await sleep(seconds * 1000); rt.sort((a, b) => a - b);
+    const out = { events: rt.length, rtMeanMs: rt.length ? +(rt.reduce((a, b) => a + b, 0) / rt.length).toFixed(1) : null, rtP95Ms: rt.length ? +rt[Math.floor(rt.length * 0.95)].toFixed(1) : null, rtMaxMs: rt.length ? +rt[rt.length - 1].toFixed(1) : null, seq: log2.slice(0, 20).join(" ") };
+    await w.kill(); cleanup(); return out;
+  },
+  async canvasBomb() {
+    const l = await makeLauncher(); const wA = await startWorker(l, {});
+    let last = 0; wA.listeners.add((d) => { if (d.type === "canvasbomb") last = d.n; if (d.type === "canvasbomb-err") log("canvasbomb error at " + d.n + ": " + d.e); });
+    wA.port.postMessage({ type: "canvasbomb" });
+    for (let i = 0; i < 60; i++) { await sleep(500); if (i % 4 === 0) log("canvasbomb main alive, canvases " + last + " (~" + last * 64 + " MB)"); }
+    return { canvases: last };
+  },
+};
+window.spike = { tests, run: async (name, arg) => { try { const r = await tests[name](arg); log(name + " => " + JSON.stringify(r)); return r; } catch (e) { const r = { error: String(e && e.message) }; log(name + " FAILED " + JSON.stringify(r)); return r; } } };
+log("spike ready; window.spike.run(name, arg)");
+</script>
+</body>
+</html>

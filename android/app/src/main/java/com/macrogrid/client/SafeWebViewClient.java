@@ -43,7 +43,11 @@ final class SafeWebViewClient extends BridgeWebViewClient {
         Log.w("SafeWebViewClient", "render process gone, crashed=" + detail.didCrash());
         Activity activity = ownBridge.getActivity();
         activity.getSharedPreferences(CRASH_PREFS, Context.MODE_PRIVATE).edit().putLong("renderGoneAt", System.currentTimeMillis()).apply();
-        boolean restart = new WidgetGuard(activity).onRendererGone(detail.didCrash(), System.currentTimeMillis());
+        // A page or widget that eats all the memory is not reported as a crash: Android kills the renderer (didCrash() is false, seen on a
+        // phone with a memory-hungry page). While the app is in front that kill is the page's doing; in the background the system takes memory back
+        // all the time and nobody is to blame.
+        boolean blame = detail.didCrash() || activity.hasWindowFocus();
+        boolean restart = new WidgetGuard(activity).onRendererGone(blame, System.currentTimeMillis());
         activity.runOnUiThread(restart ? activity::recreate : activity::finish);
         return true;
     }

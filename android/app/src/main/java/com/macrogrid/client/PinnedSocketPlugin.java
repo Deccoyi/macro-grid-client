@@ -54,8 +54,10 @@ public class PinnedSocketPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         Connection connection = active.getAndSet(null);
-        if (connection != null) connection.close(1001, "destroyed");
-        executor.shutdownNow();
+        // The close frame is a network write, which the main thread must not do (the activity is destroyed on it, for example when the
+        // renderer died and the activity is recreated). shutdown() lets this last task finish, where shutdownNow() would interrupt it.
+        if (connection != null) executor.execute(() -> connection.close(1001, "destroyed"));
+        executor.shutdown();
     }
 
     /** Params: id (caller-chosen, opaque), url (wss://host:port/path), fingerprint (SHA-256 hex, ":" allowed). */

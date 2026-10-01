@@ -33,8 +33,14 @@ packages/renderer/  the grid and widget renderer
   them; only the widgets the patch changed lose their cached live state. A patch that does not fit (a missed message) makes the app close the socket, and the reconnect
   brings a full layout.
 
-`assets.ts` caches the large values (icons and images) the server sends once as `asset:<hash>` references: in memory and in `localStorage`, evicting the least recently used
-beyond 400 entries. Resolving references keeps the identity of every part of the layout that has none, for the same redraw reason.
+`assets.ts` caches the large values (icons and images) the server sends once as `asset:<hash>` references: in memory (what drawing reads, so resolving stays synchronous) and on the device in IndexedDB (`storage/assetDb.ts`), evicting the least recently used
+beyond 1000 entries or about 48 million characters. `prepareAssets` runs before the first draw (at most one second): it opens the database, carries the old `localStorage` assets over
+(each removed only after it was written) and loads the ones the cached layouts use. Without a database the cache stays in `localStorage` (400 entries) as before. Resolving references keeps the identity of every part of the layout that has none, for the same redraw reason.
+
+## Drawing
+
+State messages are collected and applied once per frame (`ws/stateBatcher.ts`), and every deck widget is a memoised `DeckWidget` fed its own state, so one change redraws one widget.
+The event callbacks passed down are stable; keep them so, or the memo does nothing. Settings has a switch that shows performance numbers (`perf/perfStats.ts`, off by default).
 
 ## Screens and behavior
 
@@ -49,8 +55,8 @@ beyond 400 entries. Resolving references keeps the identity of every part of the
 
 ## Caching and storage
 
-Everything is in `localStorage`, per server host where it makes sense: the pairing token, the last layout (in its compact `asset:` form, so it stays small), the saved servers,
-the settings, the drawer handle position and the assets. On a cold start the last layout is drawn immediately with an "offline, cached" badge while the connection is made.
+Everything except the assets is in `localStorage`, per server host where it makes sense: the pairing token, the last layout (in its compact `asset:` form, so it stays small), the shown page
+(its own key, so a page change does not rewrite the layout), the saved servers, the settings and the drawer handle position. The assets are in the device database. On a cold start the last layout is drawn immediately with an "offline, cached" badge while the connection is made.
 Pairing always takes precedence over a cached layout: if the server asks for a PIN, the connect screen is shown even when a layout is cached.
 
 ## The renderer

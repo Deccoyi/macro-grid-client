@@ -1,6 +1,6 @@
 import type { Profile, WidgetState } from "@macro/renderer";
 import { PinnedWebSocket, pinnedSocketAvailable } from "../native/pinnedSocket";
-import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
+import { collectAssetRefs, loadAssets, missingAssets, putAsset, resolveAssetRefs, touchAssets } from "./assets";
 import { perf } from "../perf/perfStats";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
 import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
@@ -328,6 +328,8 @@ export class ServerConnection {
   /** Resolves once every asset the layout references is cached, asking the server for the ones that are not.
    * A hash the server no longer has (or a slow server) only leaves that icon blank; it never blocks the deck. */
   private async ensureAssets(layout: unknown): Promise<void> {
+    touchAssets(collectAssetRefs(layout));
+    await loadAssets([...collectAssetRefs(layout)]);
     const missing = missingAssets(layout);
     if (missing.length === 0) return;
 

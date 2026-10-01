@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile, WidgetState } from "@macro/renderer";
 import { ACTION_ERROR_MS } from "../constants";
 import { t } from "../i18n";
@@ -10,6 +10,7 @@ import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
 import { ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
+import { createStateBatcher } from "../ws/stateBatcher";
 
 /** A server whose version does not fit this app: what to tell the person, with the versions involved. */
 export interface VersionNotice {
@@ -81,8 +82,25 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     return () => clearInterval(interval);
   }, [pairingError]);
 
+  /** Live states of the same frame are applied together: one state update and one draw however many arrived. */
+  const batcher = useMemo(
+    () =>
+      createStateBatcher((batch) => {
+        perf.count("stateUpdates");
+        setStates((prev) => {
+          const next = { ...prev };
+          for (const [id, state] of Object.entries(batch)) next[id] = { ...prev[id], ...state };
+          return next;
+        });
+        const withValue = Object.entries(batch).filter(([, state]) => state.value !== undefined).map(([id]) => id);
+        if (withValue.length > 0) setDragValues((prev) => (withValue.some((id) => id in prev) ? omitKeys(prev, withValue) : prev));
+      }),
+    [],
+  );
+
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
+    batcher.clear();
     writeText(HOST_KEY, targetHost);
     setActiveHost(targetHost);
     setStates({});
@@ -106,6 +124,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
       {
         onStatusChange: setStatus,
         onLayout: (nextProfile, nextPageId, cacheProfile) => {
+          batcher.clear();
           cacheProfileRef.current = cacheProfile;
           setProfile(nextProfile);
           setPageId(nextPageId);
@@ -116,6 +135,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
           saveLayoutCache(targetHost, cacheProfile, nextPageId);
         },
         onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
+          batcher.flushNow();
           cacheProfileRef.current = cacheProfile;
           setProfile(nextProfile);
           setPageId(nextPageId);
@@ -126,16 +146,11 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
           saveLayoutCache(targetHost, cacheProfile, nextPageId);
         },
         onPageChange: (nextPageId) => {
+          batcher.flushNow();
           setPageId(nextPageId);
           if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
         },
-        onWidgetState: (state) => {
-          perf.count("stateUpdates");
-          setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
-          if (state.value !== undefined) {
-            setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
-          }
-        },
+        onWidgetState: batcher.push,
         onProfiles: (nextProfiles, nextAutoSwitch) => {
           setProfiles(nextProfiles);
           setAutoSwitch(nextAutoSwitch);
@@ -160,7 +175,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     );
     connectionRef.current = connection;
     connection.connect();
-  }, []);
+  }, [batcher]);
 
   // Reconnect automatically to the last known server on launch. The very first render already shows any
   // cached layout (see the initial state above) so a cold start looks like the deck immediately, not the
@@ -208,6 +223,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
       if (host !== activeHost) return;
       connectionRef.current?.disconnect();
       connectionRef.current = null;
+      batcher.clear();
       removeItem(HOST_KEY);
       setActiveHost("");
       setStatus("disconnected");
@@ -220,7 +236,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
       setPairingError(null);
       setVersionNotice(null);
     },
-    [activeHost],
+    [activeHost, batcher],
   );
 
   return {

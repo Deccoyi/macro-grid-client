@@ -315,6 +315,14 @@ export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onC
           </div>
         )}
 
+        <label style={rowStyle}>
+          <div>
+            <div style={labelStyle}>{t("settings.performance.show")}</div>
+            <div style={hintStyle}>{t("settings.performance.show.hint")}</div>
+          </div>
+          <Switch checked={settings.showPerformance} onChange={(showPerformance) => onChange({ ...settings, showPerformance })} />
+        </label>
+
         <div style={sectionStyle}>{t("settings.section.about")}</div>
         <div style={disclaimerStyle}>{t("settings.disclaimer")}</div>
       </div>

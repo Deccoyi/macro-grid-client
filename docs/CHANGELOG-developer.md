@@ -5,6 +5,8 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+### Changed
+- **Assets move to the device database:** the asset cache is in IndexedDB instead of `localStorage`; old entries are carried over on the first start. The shown page is kept in `macro-grid.layoutPage.<host>`, the layout in `macro-grid.layoutCache.<host>` as before. No protocol change.
 
 ## [0.4.1] - 2026-09-29
 ### Changed

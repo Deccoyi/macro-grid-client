@@ -18,3 +18,5 @@ export const fingerprintKey = (host: string) => `macro-grid.fingerprint.${host}`
 /** Last-known layout per host, so a cold start (app relaunch, not just a live reconnect) shows the
  * deck immediately instead of the connect screen while the first real layout.full is still in flight. */
 export const layoutCacheKey = (host: string) => `macro-grid.layoutCache.${host}`;
+/** The page shown last, kept apart from the layout so a page change writes a few bytes, not the whole profile. */
+export const layoutPageKey = (host: string) => `macro-grid.layoutPage.${host}`;

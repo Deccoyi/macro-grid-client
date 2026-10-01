@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PluginWidgetContext } from "@macro/renderer";
 import { InfoToast } from "./components/InfoToast";
 import { UpdateScreen } from "./components/UpdateScreen";
@@ -67,6 +67,12 @@ export function App() {
     }
     setCrashReported(true);
   }, [crashReported, widgets.crashNotice, conn.status, conn.profile, conn]);
+  // Stable, so the memoised widgets of the deck are not redrawn when something else changes; the page is read when the event happens.
+  const pageIdRef = useRef<string | undefined>(undefined);
+  pageIdRef.current = shownPage?.id;
+  const { send } = conn;
+  const onWidgetEvent = useCallback((type: string, widgetId: string) => send(type, { pageId: pageIdRef.current, widgetId }), [send]);
+  const onWidgetValueCommit = useCallback((widgetId: string, value: number) => send("widget.value", { pageId: pageIdRef.current, widgetId, value }), [send]);
   const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
@@ -197,8 +203,8 @@ export function App() {
         conn.changeProfile(id);
         setDrawerOpen(false);
       }}
-      onWidgetEvent={(type, widgetId) => conn.send(type, { pageId: page.id, widgetId })}
-      onWidgetValueCommit={(widgetId, value) => conn.send("widget.value", { pageId: page.id, widgetId, value })}
+      onWidgetEvent={onWidgetEvent}
+      onWidgetValueCommit={onWidgetValueCommit}
       onSwipeNextPage={conn.nextPage}
       onSwipePrevPage={conn.prevPage}
       onSettingsOpenChange={setSettingsOpen}
@@ -207,6 +213,7 @@ export function App() {
       webLimit={webLimitFor(appSettings)}
       webGuard={{ ready: widgets.guardReady, disabled: widgets.disabledIds, onTurnOn: widgets.turnOn }}
       pluginLive={appVisible}
+      showPerformance={appSettings.showPerformance}
     />
   );
   }

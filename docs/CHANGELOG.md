@@ -4,11 +4,14 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 ### New
+- **Performance numbers:** a switch in Settings shows performance numbers over the deck.
 - **Plugin widgets on your deck:** widgets drawn by plugins, such as a gauge, now run on your phone. Settings has a switch to turn them off and a recommended number of widgets that depends on your device; you can change it. If a plugin's widgets make the app close, they are switched off and the app tells you which plugin it was.
 - **A web page that crashes the app is switched off:** if a web widget's page makes the app close, that site is turned off on this phone and the app tells you which one. You can turn it back on from the widget or in Settings.
 - **Recommended number of web widgets:** Settings shows how many web pages are recommended at the same time on your phone and lets you change it. Pages over the number wait with a "Tap to load" button.
 - **Keep loaded:** a web widget set to "Keep loaded" in the editor keeps running when you go to another page, so a chat does not reload each time.
 ### Changed
+- **A smoother deck:** the deck stays smooth when many values change at once and while you drag a slider.
+- **Icons and images are kept:** the icons and images of big profiles are kept after a restart.
 - **Web pages stay loaded for 30 seconds in the background:** a short trip to another app no longer reloads a chat; after 30 seconds the pages are unloaded and load again when you come back.
 ### Fixed
 - **Back closes Settings instead of the app:** the back button or swipe now closes an open full-screen page such as Settings, and only leaves the app from the deck.

@@ -55,6 +55,7 @@ For a release build and signing, see [release.md](release.md).
 
 ```powershell
 npm run typecheck                            # the app
+npm test                                       # the app tests (Vitest, jsdom, Testing Library)
 npm test --workspace packages/renderer       # the renderer tests (Vitest)
 ```
 
@@ -75,4 +76,3 @@ npm test --workspace packages/renderer       # the renderer tests (Vitest)
 - **`sdk.dir` in `android/local.properties`** must use forward slashes (for example `C:/path/to/Android/Sdk`). A backslash is an escape character in that file format and silently corrupts the path.
 - **`cap sync` rewrites `android/capacitor.settings.gradle` and `android/app/capacitor.build.gradle`.** Their line endings can change on Windows without any real change; do not commit that noise.
 - **The renderer is an independent copy** of the one in the server repository. A rendering change that both need is made in both.
-- **UI text** is currently hard-coded in Turkish in the components (there is no i18n layer in the app yet).

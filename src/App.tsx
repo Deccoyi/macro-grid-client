@@ -207,6 +207,7 @@ export function App() {
       webLimit={webLimitFor(appSettings)}
       webGuard={{ ready: widgets.guardReady, disabled: widgets.disabledIds, onTurnOn: widgets.turnOn }}
       pluginLive={appVisible}
+      showPerformance={appSettings.showPerformance}
     />
   );
   }

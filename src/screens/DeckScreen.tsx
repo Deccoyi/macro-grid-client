@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Grid, WidgetView, isSafeWebUrl, webUrlHost, type Profile, type Widget, type WidgetState } from "@macro/renderer";
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
+import { PerfOverlay } from "../components/PerfOverlay";
 import { ProfileDrawer } from "../components/ProfileDrawer";
 import { StatusBadge } from "../components/StatusBadge";
 import { t } from "../i18n";
+import { perf } from "../perf/perfStats";
 import { useConfirmedWebSites } from "../hooks/useConfirmedWebSites";
 import { webGuardId } from "../native/widgetGuard";
 import { planWebLoad, type WebCandidate } from "../widgets/webLoad";
@@ -73,6 +75,8 @@ interface DeckScreenProps {
   webGuard: { ready: boolean; disabled: ReadonlySet<string>; onTurnOn: (id: string) => void };
   /** False while the app is not in front: plugin widgets are paused then. */
   pluginLive: boolean;
+  /** Show the performance numbers over the deck. */
+  showPerformance?: boolean;
 }
 
 /** The address of the server without its port: a web widget must never show it (the page would be the server itself). */
@@ -113,6 +117,7 @@ export function DeckScreen({
   webLimit,
   webGuard,
   pluginLive,
+  showPerformance,
 }: DeckScreenProps) {
   const blockedHosts = useMemo(() => [serverHostName(activeHost)], [activeHost]);
   const webTexts = useMemo(() => ({ empty: t("web.empty"), refused: t("web.refused"), off: webPages.offText }), [webPages.offText]);
@@ -150,6 +155,7 @@ export function DeckScreen({
   const wantedSites = useMemo(() => webPlan.live.map((c) => c.siteId), [webPlan]);
   const confirmedSites = useConfirmedWebSites(wantedSites, webGuard.ready);
   const renderWidget = (widget: Widget) => {
+    perf.count("widgetDraws");
     const state = states[widget.id];
     const siteId = siteOf(widget);
     const siteOff = siteId !== null && webGuard.disabled.has(siteId);
@@ -187,10 +193,13 @@ export function DeckScreen({
     );
   };
 
+  useEffect(() => perf.mark("firstDraw"), []);
+
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
     <div style={deckStyle} onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}>
+      {showPerformance && <PerfOverlay />}
       {status !== "connected" && <StatusBadge status={status} usingCache={usingCache} />}
       {actionError && <ActionErrorToast message={actionError} />}
 

@@ -1,5 +1,6 @@
 import type { Profile } from "@macro/renderer";
 import { resolveAssetRefs } from "../ws/assets";
+import { perf } from "../perf/perfStats";
 import { layoutCacheKey } from "./keys";
 import { readJson, writeJson } from "./storage";
 
@@ -21,5 +22,6 @@ export function resolveCachedProfile(cache: LayoutCache | null): Profile | null 
 
 /** Best-effort: the cache is a nice-to-have, not essential (storage may be full or unavailable). */
 export function saveLayoutCache(host: string, profile: Profile, pageId: string): void {
-  writeJson(layoutCacheKey(host), { profile, pageId } satisfies LayoutCache);
+  const value = { profile, pageId } satisfies LayoutCache;
+  perf.timeCacheWrite(JSON.stringify(value).length, () => writeJson(layoutCacheKey(host), value));
 }

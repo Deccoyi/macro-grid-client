@@ -27,12 +27,14 @@ export interface AppSettings {
   webWidgetLimit: PluginWidgetLimitSetting;
   /** The number used when `webWidgetLimit` is "custom". */
   webWidgetLimitCount: number;
+  /** Show the performance numbers on the deck (for testing; off by default). */
+  showPerformance: boolean;
 }
 
 export type PluginWidgetLimitSetting = "auto" | "custom" | "none";
 
 const KEY = "macro-grid.settings";
-const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi", showWebPages: true, showPluginWidgets: true, pluginWidgetLimit: "auto", pluginWidgetLimitCount: 4, webWidgetLimit: "auto", webWidgetLimitCount: 2 };
+const DEFAULTS: AppSettings = { kiosk: true, orientation: "auto", checkForUpdates: true, includePreReleases: true, updateNetwork: "wifi", showWebPages: true, showPluginWidgets: true, pluginWidgetLimit: "auto", pluginWidgetLimitCount: 4, webWidgetLimit: "auto", webWidgetLimitCount: 2, showPerformance: false };
 
 export function loadSettings(): AppSettings {
   const stored = readJson<Partial<AppSettings> | null>(KEY, null);

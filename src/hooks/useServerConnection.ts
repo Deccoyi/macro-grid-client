@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Profile, WidgetState } from "@macro/renderer";
 import { ACTION_ERROR_MS } from "../constants";
 import { t } from "../i18n";
+import { perf } from "../perf/perfStats";
 import { getDeviceId } from "../storage/deviceId";
 import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys";
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
@@ -129,6 +130,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
           if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
         },
         onWidgetState: (state) => {
+          perf.count("stateUpdates");
           setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
           if (state.value !== undefined) {
             setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));

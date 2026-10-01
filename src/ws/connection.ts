@@ -1,6 +1,7 @@
 import type { Profile, WidgetState } from "@macro/renderer";
 import { PinnedWebSocket, pinnedSocketAvailable } from "../native/pinnedSocket";
 import { missingAssets, putAsset, resolveAssetRefs } from "./assets";
+import { perf } from "../perf/perfStats";
 import { applyLayoutPatch, type LayoutPatchData } from "./layoutPatch";
 import { macroGrid as REQUIRED_MACRO_GRID, version as CLIENT_VERSION } from "../../package.json";
 import { checkServerVersion, type ServerCompat } from "./serverCompat";
@@ -212,6 +213,7 @@ export class ServerConnection {
 
     socket.onmessage = (ev: { data: string }) => {
       if (this.destroyed) return;
+      perf.count("messages");
       let envelope: Envelope;
       try {
         envelope = JSON.parse(ev.data);
@@ -249,6 +251,7 @@ export class ServerConnection {
         // after a "pairing_required" error, which otherwise leaves the status stuck on that value
         // forever even though the connection is now fully working.
         this.events.onStatusChange("connected");
+        perf.mark("firstWelcome");
         this.events.onWelcome?.();
         this.events.onServerVersion?.(checkServerVersion(data.serverVersion, REQUIRED_MACRO_GRID), data.serverVersion, REQUIRED_MACRO_GRID);
         break;
@@ -258,6 +261,7 @@ export class ServerConnection {
         this.cacheProfile = data.profile;
         await this.ensureAssets(data.profile);
         if (this.destroyed || this.cacheProfile !== data.profile) return;
+        perf.mark("firstLayout");
         this.events.onLayout(resolveAssetRefs(data.profile), data.pageId, data.profile);
         break;
       }
@@ -283,6 +287,7 @@ export class ServerConnection {
       case "widget.state": {
         // A dynamic icon arrives as an asset reference like the ones in a layout.
         const state = envelope.data as WidgetState;
+        perf.count("widgetStateMessages");
         await this.ensureAssets(state.style);
         this.events.onWidgetState(resolveAssetRefs(state));
         break;

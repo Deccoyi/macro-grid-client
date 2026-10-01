@@ -49,6 +49,13 @@ function getAsset(hash: string): string | undefined {
   return stored;
 }
 
+/** How many assets are in memory and how many characters they hold (for the performance overlay). */
+export function assetStats(): { count: number; chars: number } {
+  let chars = 0;
+  for (const data of memory.values()) chars += data.length;
+  return { count: memory.size, chars };
+}
+
 export function putAsset(hash: string, data: string): void {
   memory.set(hash, data);
   touch(hash);

@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { perf } from "../perf/perfStats";
 import { getDeviceId } from "../storage/deviceId";
 import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys";
-import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
+import { loadLayoutCache, resolveCachedProfile, saveLayoutCache, saveLayoutPage } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
 import { ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
@@ -148,7 +148,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
         onPageChange: (nextPageId) => {
           batcher.flushNow();
           setPageId(nextPageId);
-          if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
+          if (cacheProfileRef.current) saveLayoutPage(targetHost, nextPageId);
         },
         onWidgetState: batcher.push,
         onProfiles: (nextProfiles, nextAutoSwitch) => {

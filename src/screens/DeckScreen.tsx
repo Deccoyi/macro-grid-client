@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Grid, WidgetView, isSafeWebUrl, webUrlHost, type Profile, type Widget, type WidgetState } from "@macro/renderer";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Grid, isSafeWebUrl, type Profile, type Widget, type WidgetState } from "@macro/renderer";
 import { ActionErrorToast } from "../components/ActionErrorToast";
 import { DrawerHandle } from "../components/DrawerHandle";
 import { PerfOverlay } from "../components/PerfOverlay";
+import { DeckWidget, type WidgetEventType } from "./DeckWidget";
+import { perf } from "../perf/perfStats";
 import { ProfileDrawer } from "../components/ProfileDrawer";
 import { StatusBadge } from "../components/StatusBadge";
 import { t } from "../i18n";
-import { perf } from "../perf/perfStats";
 import { useConfirmedWebSites } from "../hooks/useConfirmedWebSites";
 import { webGuardId } from "../native/widgetGuard";
 import { planWebLoad, type WebCandidate } from "../widgets/webLoad";
@@ -31,8 +32,6 @@ const deckStyle: CSSProperties = {
   position: "relative",
   overflow: "hidden",
 };
-
-type WidgetEventType = "widget.down" | "widget.up" | "widget.longPress" | "widget.doubleTap";
 
 /** What the deck does with its web widgets: `live` false draws the placeholder, `offText` says why. */
 export interface WebPagesState {
@@ -154,41 +153,29 @@ export function DeckScreen({
   // The sites that are about to be live; the phone writes them down before any iframe is mounted (write-ahead).
   const wantedSites = useMemo(() => webPlan.live.map((c) => c.siteId), [webPlan]);
   const confirmedSites = useConfirmedWebSites(wantedSites, webGuard.ready);
+  const onTap = useCallback((widgetId: string) => setTapped((prev) => new Set(prev).add(widgetId)), []);
   const renderWidget = (widget: Widget) => {
-    perf.count("widgetDraws");
-    const state = states[widget.id];
     const siteId = siteOf(widget);
     const siteOff = siteId !== null && webGuard.disabled.has(siteId);
     const waiting = siteId !== null && !siteOff && webPlan.waiting.has(widget.id);
     const loadable = siteId === null || (liveWidgetIds.has(widget.id) && confirmedSites.has(siteId));
-    let webBlocked;
-    if (siteOff && siteId) webBlocked = { text: t("web.crashedOff"), action: t("settings.widgets.turnOn"), onAction: () => webGuard.onTurnOn(siteId) };
-    else if (waiting)
-      webBlocked = { text: webUrlHost(state?.url || String(widget.props?.url ?? "")), action: t("web.tapToLoad"), onAction: () => setTapped((prev) => new Set(prev).add(widget.id)) };
     return (
-      <WidgetView
+      <DeckWidget
         widget={widget}
-        liveText={state?.text}
-        liveActive={state?.active}
-        liveValue={dragValues[widget.id] ?? state?.value}
-        liveStyle={state?.style}
-        webUrl={state?.url}
-        webReload={state?.reload}
+        state={states[widget.id]}
+        dragValue={dragValues[widget.id]}
         webLive={webPages.live && loadable}
-        webBlocked={webBlocked}
-        webBlockedHosts={blockedHosts}
+        siteId={siteId}
+        siteOff={siteOff}
+        waiting={waiting}
+        blockedHosts={blockedHosts}
         webTexts={webTexts}
         pluginLive={pluginLive}
-        haptics
-        onPress={() => onWidgetEvent("widget.down", widget.id)}
-        onRelease={() => onWidgetEvent("widget.up", widget.id)}
-        onLongPress={() => onWidgetEvent("widget.longPress", widget.id)}
-        onDoubleTap={() => onWidgetEvent("widget.doubleTap", widget.id)}
-        onValueChange={(value) => onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }))}
-        onValueCommit={(value) => {
-          onDragValuesChange((prev) => ({ ...prev, [widget.id]: value }));
-          onWidgetValueCommit(widget.id, value);
-        }}
+        onWidgetEvent={onWidgetEvent}
+        onWidgetValueCommit={onWidgetValueCommit}
+        onDragValuesChange={onDragValuesChange}
+        onTurnOn={webGuard.onTurnOn}
+        onTap={onTap}
       />
     );
   };

@@ -90,7 +90,7 @@ export class PinnedWebSocket {
       if (this.stopped) return;
       this.readyState = PinnedWebSocket.CLOSED;
       this.onerror?.();
-      this.onclose?.();
+      if (!this.stopped) this.onclose?.();
     });
   }
 
@@ -105,5 +105,11 @@ export class PinnedWebSocket {
     this.readyState = PinnedWebSocket.CLOSING;
     Native.close({ id: this.id, code: 1000, reason: "" }).catch(() => {});
     this.listeners.forEach((pending) => pending.then((handle) => handle.remove()).catch(() => {}));
+    // Like a browser WebSocket, close() ends in onclose. The listeners are gone, so the native close event cannot deliver it; without this a
+    // close() from onerror (the native side reports error, then close) left the connection with no reconnect scheduled.
+    queueMicrotask(() => {
+      this.readyState = PinnedWebSocket.CLOSED;
+      this.onclose?.();
+    });
   }
 }

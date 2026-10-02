@@ -125,6 +125,8 @@ const PROBE_TIMEOUT_MS = 2_000;
 export const IDLE_PROBE_MS = 25_000;
 /** After a pause at least this long (screen locked, app in the background) the socket is replaced at once instead of probed. */
 export const RESUME_RECONNECT_MS = 3_000;
+/** A socket younger than this that has not been welcomed yet is left alone by further resume signals. */
+const RESUME_SETTLE_MS = 1_000;
 /**
  * The liveness probe: an `asset.get` for a hash nobody has. The server answers every such request with one `asset` message
  * (no data), so any reply proves the connection works without adding a message type to the protocol.
@@ -152,6 +154,8 @@ export class ServerConnection {
   /** The server asked for a PIN and the person is typing it: the open socket is fine and must not be replaced under them. */
   private awaitingPin = false;
   private lastInboundAt = 0;
+  /** When the current socket was started: a second resume signal right after the first must not replace a socket that is still setting up. */
+  private startedAt = 0;
   private openTimer: ReturnType<typeof setTimeout> | null = null;
   private welcomeTimer: ReturnType<typeof setTimeout> | null = null;
   private probeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -216,6 +220,8 @@ export class ServerConnection {
   resumed(pausedMs: number): void {
     if (this.destroyed || this.closedByUser) return;
     if (this.awaitingPin && this.socket !== null) return;
+    // An unlock fires several signals together; a socket started after the pause is already the fresh one, and its own timeouts cover it.
+    if (this.socket !== null && !this.welcomed && Date.now() - this.startedAt < RESUME_SETTLE_MS) return;
     if (this.socket === null || pausedMs >= RESUME_RECONNECT_MS || !this.welcomed) {
       this.reconnectNow(); // also ends a backoff wait
     } else {
@@ -256,7 +262,7 @@ export class ServerConnection {
     this.socket = socket;
     this.cacheProfile = null;
     this.awaitingPin = false;
-    this.lastInboundAt = Date.now();
+    this.lastInboundAt = this.startedAt = Date.now();
     this.openTimer = setTimeout(() => current() && this.retryAfterFailure(), OPEN_TIMEOUT_MS);
 
     socket.onopen = () => {
@@ -455,6 +461,7 @@ export class ServerConnection {
   }
 
   private handleAsset(asset: AssetData): void {
+    if (asset.hash === PROBE_HASH) return; // the liveness probe's answer: proof of life only, nothing for the widgets or the cache
     const forWidget = this.events.onAsset?.(asset.hash, asset.data ?? null) === true;
     if (asset.data && !forWidget) putAsset(asset.hash, asset.data);
     const waiters = this.assetWaiters.get(asset.hash);

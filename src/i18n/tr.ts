@@ -17,6 +17,7 @@ export const tr = {
   "connect.scanQr": "QR ile Tara",
   "connect.savedServers": "Kayıtlı sunucular",
   "connect.cancel": "Vazgeç",
+  "connect.changeServer": "Başka sunucu kullan",
   "connect.connecting": "Bağlanıyor…",
   "connect.retrying": "Bağlantı koptu, yeniden deneniyor…",
   "connect.pairHint": "Bu cihaz henüz eşleşmemiş. Bilgisayarındaki Macro Grid düzenleyicisinde \"Eşleştirme\"ye tıkla ve orada gösterilen 6 haneli PIN'i buraya gir.",

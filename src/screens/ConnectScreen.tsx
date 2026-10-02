@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { t } from "../i18n";
 import { colors, monoFont, sectionLabelStyle } from "../theme";
 import type { ConnectionStatus, PairingError } from "../ws/connection";
@@ -143,7 +143,12 @@ export function ConnectScreen({
   onOpenSettings,
 }: ConnectScreenProps) {
   const [pin, setPin] = useState("");
-  const pairing = status === "pairing_required";
+  // "Use another server" leaves the PIN prompt for the host entry; any new connection attempt brings the normal flow back.
+  const [hostEntry, setHostEntry] = useState(false);
+  useEffect(() => {
+    if (status !== "pairing_required") setHostEntry(false);
+  }, [status]);
+  const pairing = status === "pairing_required" && !hostEntry;
   const pinReady = pin.length === PIN_LENGTH;
 
   return (
@@ -212,6 +217,12 @@ export function ConnectScreen({
           />
           <button onClick={() => onSubmitPin(pin)} disabled={!pinReady} style={pairButtonStyle(pinReady)}>
             {t("connect.pair")}
+          </button>
+          <button onClick={onScanQr} style={secondaryButtonStyle}>
+            {t("connect.scanQr")}
+          </button>
+          <button onClick={() => setHostEntry(true)} style={cancelStyle}>
+            {t("connect.changeServer")}
           </button>
         </>
       )}

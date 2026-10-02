@@ -205,6 +205,29 @@ describe("ServerConnection", () => {
       expect(FakeSocket.all).toHaveLength(2);
     });
 
+    it("opens one socket, not two, for resume signals that arrive together", async () => {
+      const { conn, socket } = setup();
+      await welcome(socket);
+
+      conn.resumed(10_000);
+      vi.advanceTimersByTime(50);
+      conn.resumed(10_000);
+
+      expect(FakeSocket.all).toHaveLength(2);
+    });
+
+    it("does not pass the probe's answer on to the widgets", async () => {
+      const onAsset = vi.fn(() => false);
+      const { events, socket } = setup();
+      events.onAsset = onAsset;
+      await welcome(socket);
+
+      socket.receive("asset", { hash: "0000000000000000" });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(onAsset).not.toHaveBeenCalled();
+    });
+
     it("probes after a long silence while connected", async () => {
       const { socket } = setup();
       await welcome(socket);

@@ -215,7 +215,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
         resume(paused);
       }
     };
-    const onOnline = () => resume(RESUME_ONLINE_PAUSE_MS);
+    const onOnline = () => resume(RESUME_ONLINE_PAUSE_MS); // the old socket is almost never usable after the network came back
     const timer = setInterval(() => {
       const now = Date.now();
       const gap = now - lastTick;

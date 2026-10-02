@@ -4,6 +4,7 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 ### New
+- **Icons follow the text colour:** an icon picked in the editor takes the colour of the widget's text, so a colour that changes with a variable recolours the icon too. Icons picked earlier keep their colour.
 - **Performance numbers:** a switch in Settings shows performance numbers over the deck.
 - **Plugin widgets on your deck:** widgets drawn by plugins, such as a gauge, now run on your phone. Settings has a switch to turn them off and a recommended number of widgets that depends on your device; you can change it. If a plugin's widgets make the app close, they are switched off and the app tells you which plugin it was.
 - **A web page that crashes the app is switched off:** if a web widget's page makes the app close, that site is turned off on this phone and the app tells you which one. You can turn it back on from the widget or in Settings.

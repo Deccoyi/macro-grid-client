@@ -33,6 +33,9 @@ const deckStyle: CSSProperties = {
   overflow: "hidden",
 };
 
+/** The deck while the connection is down: dimmed, and touches pass through it (a press in progress is cancelled by the browser). */
+const offlineGridStyle: CSSProperties = { opacity: 0.45, pointerEvents: "none", transition: "opacity 150ms" };
+
 /** What the deck does with its web widgets: `live` false draws the placeholder, `offText` says why. */
 export interface WebPagesState {
   live: boolean;
@@ -182,6 +185,8 @@ export function DeckScreen({
 
   useEffect(() => perf.mark("firstDraw"), []);
 
+  // Without a working connection a press cannot reach the computer: the deck is dimmed and takes no touches instead of pretending.
+  const live = status === "connected";
   const swipe = useDeckSwipe({ drawerOpen, onDrawerOpenChange, onNextPage: onSwipeNextPage, onPrevPage: onSwipePrevPage });
 
   return (
@@ -202,7 +207,7 @@ export function DeckScreen({
           // A page that is not shown keeps only its "keep loaded" web widgets; everything else on it is unmounted.
           const gridPage = shown ? page : { ...p, widgets: p.widgets.filter(isKept) };
           return (
-            <div key={p.id} style={{ width: "100%", height: "100%", display: shown ? "block" : "none" }}>
+            <div key={p.id} style={{ width: "100%", height: "100%", display: shown ? "block" : "none", ...(live ? null : offlineGridStyle) }}>
               <Grid page={gridPage} renderWidget={renderWidget} />
             </div>
           );

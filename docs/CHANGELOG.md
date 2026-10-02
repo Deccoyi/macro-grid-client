@@ -16,6 +16,8 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 ### Fixed
 - **Back closes Settings instead of the app:** the back button or swipe now closes an open full-screen page such as Settings, and only leaves the app from the deck.
 - **The app no longer closes when the page view crashes:** if a web page uses up all its memory, the deck reloads instead of the app shutting down.
+- **Reconnects after the screen was locked:** the phone connects again by itself, shows a quiet "Reconnecting" note, and dims the deck until it works instead of flashing red.
+- **A button held while the phone locks is let go:** the computer no longer keeps it pressed.
 
 ## 0.4.1 - 2026-09-29
 ### Changed

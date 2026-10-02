@@ -8,9 +8,14 @@ import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys"
 import { loadLayoutCache, resolveCachedProfile, saveLayoutCache, saveLayoutPage } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
-import { ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
+import { RESUME_RECONNECT_MS, ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
 import { createStateBatcher } from "../ws/stateBatcher";
+
+/** A timer tick that arrives this much later than planned means the page was frozen in between (a locked screen). */
+const FROZEN_GAP_MS = 5000;
+/** The network returning says nothing about how long the socket was idle, so it is treated as a long pause: the socket is replaced. */
+const RESUME_ONLINE_PAUSE_MS = RESUME_RECONNECT_MS;
 
 /** A server whose version does not fit this app: what to tell the person, with the versions involved. */
 export interface VersionNotice {
@@ -186,6 +191,43 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Whatever was being dragged when the link dropped is moot: the server's own value takes over on the next welcome.
+  useEffect(() => {
+    if (status !== "connected") setDragValues((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [status]);
+
+  // A locked screen freezes the page and may kill its socket without any event. These signals tell the connection the app is back:
+  // the page becoming visible again, the network returning, or a clock gap bigger than a tick (the page was frozen).
+  useEffect(() => {
+    let hiddenAt: number | null = document.visibilityState === "hidden" ? Date.now() : null;
+    let lastTick = Date.now();
+    const resume = (pausedMs: number) => connectionRef.current?.resumed(pausedMs);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (hiddenAt !== null) {
+        const paused = Date.now() - hiddenAt;
+        hiddenAt = null;
+        lastTick = Date.now();
+        resume(paused);
+      }
+    };
+    const onOnline = () => resume(RESUME_ONLINE_PAUSE_MS);
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const gap = now - lastTick;
+      lastTick = now;
+      if (gap > FROZEN_GAP_MS && document.visibilityState === "visible") resume(gap);
+    }, 1000);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+
   // A scanned QR's PIN is only usable once the server actually says it needs one — submitting it any
   // earlier (e.g. against an old accepted token) would be a spurious re-pair attempt.
   useEffect(() => {
@@ -259,8 +301,8 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     connect,
     connectScanned,
     forget,
-    /** Sends a protocol message on the live socket (dropped while disconnected). */
-    send: (type: string, data?: unknown) => connectionRef.current?.send(type, data),
+    /** Sends a protocol message on the live socket. False means it was dropped (not connected); nothing is queued. */
+    send: (type: string, data?: unknown): boolean => connectionRef.current?.send(type, data) ?? false,
     retryWithPin: (pin: string) => {
       setPairingError(null);
       connectionRef.current?.retryWithPin(pin);

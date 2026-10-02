@@ -31,6 +31,8 @@ export const en: Record<DictKey, string | ((...args: string[]) => string)> = {
   "badge.connecting": "Connecting…",
   "badge.offlineCached": "Offline · cached",
   "badge.offline": "Offline",
+  "badge.reconnecting": "Reconnecting…",
+  "badge.reconnectingCached": "Reconnecting · cached",
 
   "qr.unsupported": "This device does not support QR scanning.",
   "qr.permission": "Camera permission was not granted. Allow it in the settings and try again.",

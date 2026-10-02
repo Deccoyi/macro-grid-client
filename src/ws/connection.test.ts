@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ServerConnection, type ConnectionEvents } from "./connection";
+import { IDLE_PROBE_MS, RESUME_RECONNECT_MS, ServerConnection, type ConnectionEvents } from "./connection";
 
 class FakeSocket {
   static OPEN = 1;
   static last: FakeSocket;
+  static all: FakeSocket[] = [];
   readyState = FakeSocket.OPEN;
   sent: Array<{ type: string; data?: unknown }> = [];
   onopen: (() => void) | null = null;
@@ -13,6 +14,7 @@ class FakeSocket {
   closed = false;
   constructor(public url: string) {
     FakeSocket.last = this;
+    FakeSocket.all.push(this);
   }
   send(text: string) {
     this.sent.push(JSON.parse(text));
@@ -46,7 +48,10 @@ function setup() {
   return { events, conn, socket };
 }
 
-beforeEach(() => vi.stubGlobal("WebSocket", FakeSocket));
+beforeEach(() => {
+  FakeSocket.all = [];
+  vi.stubGlobal("WebSocket", FakeSocket);
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ServerConnection", () => {
@@ -73,7 +78,7 @@ describe("ServerConnection", () => {
     const hello = socket.sent[0]!;
     expect(hello.type).toBe("hello");
     expect(hello.data).toMatchObject({ deviceId: "dev1", deviceName: "Phone", token: "tok", capabilities: ["assets", "layout.patch"] });
-    expect(events.onStatusChange).toHaveBeenLastCalledWith("connected");
+    expect(events.onStatusChange).toHaveBeenLastCalledWith("connecting"); // connected only after the server's welcome
   });
 
   it("stores a newly issued token on welcome", async () => {
@@ -145,5 +150,90 @@ describe("ServerConnection", () => {
     await flush();
     expect(events.onPageChange).not.toHaveBeenCalled();
     expect(events.onStatusChange).not.toHaveBeenLastCalledWith("disconnected");
+  });
+
+  describe("keeping the connection alive", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const welcome = async (socket: FakeSocket) => {
+      socket.receive("welcome", { serverName: "s", serverVersion: "1.0.0" });
+      await vi.advanceTimersByTimeAsync(0);
+    };
+    const probes = (socket: FakeSocket) => socket.sent.filter((m) => m.type === "asset.get");
+
+    it("reports connected only after the welcome", async () => {
+      const { events, socket } = setup();
+      expect(events.onStatusChange).not.toHaveBeenCalledWith("connected");
+      await welcome(socket);
+      expect(events.onStatusChange).toHaveBeenLastCalledWith("connected");
+    });
+
+    it("gives up on a socket that never opens or is never welcomed, and tries again", async () => {
+      const events = setup().events;
+      const first = FakeSocket.all[0]!;
+      await vi.advanceTimersByTimeAsync(5_000); // welcome never came
+      expect(first.closed).toBe(true);
+      expect(events.onStatusChange).toHaveBeenLastCalledWith("disconnected");
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(FakeSocket.all.length).toBe(2);
+    });
+
+    it("replaces a half-open socket that does not answer a probe, and does nothing when it answers", async () => {
+      const { conn, socket } = setup();
+      await welcome(socket);
+
+      conn.resumed(1_000);
+      expect(probes(socket)).toHaveLength(1);
+      socket.receive("asset", { hash: "0000000000000000", data: null });
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(FakeSocket.all).toHaveLength(1);
+
+      conn.resumed(1_000);
+      await vi.advanceTimersByTimeAsync(2_000); // no reply
+      expect(FakeSocket.all).toHaveLength(2);
+      expect(socket.closed).toBe(true);
+    });
+
+    it("replaces the socket at once after a long pause, without probing", async () => {
+      const { conn, socket } = setup();
+      await welcome(socket);
+
+      conn.resumed(RESUME_RECONNECT_MS);
+
+      expect(probes(socket)).toHaveLength(0);
+      expect(FakeSocket.all).toHaveLength(2);
+    });
+
+    it("probes after a long silence while connected", async () => {
+      const { socket } = setup();
+      await welcome(socket);
+
+      await vi.advanceTimersByTimeAsync(IDLE_PROBE_MS + 5_000);
+
+      expect(probes(socket)).toHaveLength(1);
+    });
+
+    it("ignores a late message of a replaced socket", async () => {
+      const { conn, events, socket: old } = setup();
+      await welcome(old);
+      conn.resumed(RESUME_RECONNECT_MS);
+      const fresh = FakeSocket.last;
+
+      old.onmessage?.({ data: JSON.stringify({ type: "layout.full", data: { profile: { pages: [] }, pageId: "p" } }) });
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(events.onLayout).not.toHaveBeenCalled();
+      expect(fresh).not.toBe(old);
+    });
+
+    it("send reports whether the message went out", async () => {
+      const { conn, socket } = setup();
+      await welcome(socket);
+      expect(conn.send("widget.down", {})).toBe(true);
+      conn.resumed(RESUME_RECONNECT_MS);
+      FakeSocket.last.readyState = 0;
+      expect(conn.send("widget.down", {})).toBe(false);
+    });
   });
 });

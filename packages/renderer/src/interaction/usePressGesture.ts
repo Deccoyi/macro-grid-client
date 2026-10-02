@@ -146,8 +146,12 @@ export function usePressGesture(options: PressGestureOptions): PressGestureHandl
   }, []);
 
   const onPointerCancel = useCallback((_event: PointerEvent) => {
+    const wasDown = isDown.current;
     isDown.current = false;
     clearTimers();
+    // The press already reached the widget, so the release must too (a locked screen or a system gesture ends the touch this way);
+    // otherwise the server keeps the button held. A press that was held back or dropped never reached it.
+    if (wasDown && pressFired.current && !dropped.current) optionsRef.current.onRelease?.();
   }, []);
 
   return { onPointerDown, onPointerUp, onPointerCancel };

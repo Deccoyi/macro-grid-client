@@ -29,6 +29,8 @@ export const tr = {
   "badge.connecting": "Bağlanıyor…",
   "badge.offlineCached": "Çevrimdışı · önbellek",
   "badge.offline": "Çevrimdışı",
+  "badge.reconnecting": "Yeniden bağlanıyor…",
+  "badge.reconnectingCached": "Yeniden bağlanıyor · önbellek",
 
   "qr.unsupported": "Bu cihaz QR taramayı desteklemiyor.",
   "qr.permission": "Kamera izni verilmedi. Ayarlardan izin verip tekrar dene.",

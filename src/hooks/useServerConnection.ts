@@ -71,9 +71,6 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
   const connectionRef = useRef<ServerConnection | null>(null);
   /** The current layout in its compact `asset:` form — what gets written to the layout cache. */
   const cacheProfileRef = useRef<Profile | null>(null);
-  /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
-   * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
-  const pendingQrPinRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (pairingError?.retryAfterSeconds == null) {
@@ -110,7 +107,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
   }, []);
 
-  const connect = useCallback((targetHost: string) => {
+  const connect = useCallback((targetHost: string, presetPin?: string | null) => {
     connectionRef.current?.disconnect();
     batcher.clear();
     writeText(HOST_KEY, targetHost);
@@ -182,6 +179,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
       },
     );
     connectionRef.current = connection;
+    if (presetPin) connection.presetPin(presetPin);
     connection.connect();
   }, [batcher, showNotice]);
 
@@ -239,16 +237,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     };
   }, []);
 
-  // A scanned QR's PIN is only usable once the server actually says it needs one — submitting it any
-  // earlier (e.g. against an old accepted token) would be a spurious re-pair attempt.
-  useEffect(() => {
-    if (status === "pairing_required" && pendingQrPinRef.current) {
-      connectionRef.current?.retryWithPin(pendingQrPinRef.current);
-      pendingQrPinRef.current = null;
-    }
-  }, [status]);
-
-  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one.
+  /** Connects to a host taken from a scanned QR code, sending its PIN in the first hello.
    * A `tlsPort`/`fingerprint` pair (present only when the server's QR offered one) is persisted before
    * connecting, since the transport itself needs it — unlike the pairing token, it can't wait for a
    * successful `hello`. */
@@ -261,8 +250,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
         removeItem(tlsPortKey(scannedHost));
         removeItem(fingerprintKey(scannedHost));
       }
-      pendingQrPinRef.current = pin;
-      connect(scannedHost);
+      connect(scannedHost, pin);
     },
     [connect],
   );

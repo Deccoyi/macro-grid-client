@@ -145,6 +145,7 @@ const ASSET_WAIT_MS = 5_000;
 export class ServerConnection {
   private socket: WebSocket | PinnedWebSocket | null = null;
   private backoffMs = MIN_BACKOFF_MS;
+  private presetPinValue: string | null = null;
   /** Counts the sockets opened by this connection. A late event of an earlier socket carries an older number and is ignored. */
   private generation = 0;
   /** True from the server's welcome until the socket ends: only then can a press reach the computer. */
@@ -235,8 +236,26 @@ export class ServerConnection {
     this.sendHello(pin);
   }
 
+  /**
+   * A PIN that came with a scanned QR code: it goes into the first hello that really leaves, so pairing does not wait for the server
+   * to ask first. It is used once (a wrong PIN must not be repeated by every reconnect, the server counts the attempts).
+   */
+  presetPin(pin: string): void {
+    this.presetPinValue = pin;
+  }
+
   private sendHello(pin?: string): void {
-    this.send("hello", {
+    const preset = pin === undefined ? this.presetPinValue : null;
+    if (preset) pin = preset;
+    const sent = this.sendHelloMessage(pin);
+    if (preset && sent) {
+      this.presetPinValue = null;
+      this.attemptedPin = true;
+    }
+  }
+
+  private sendHelloMessage(pin?: string): boolean {
+    return this.send("hello", {
       deviceId: this.deviceId,
       deviceName: this.deviceName,
       token: this.token,

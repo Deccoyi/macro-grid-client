@@ -142,6 +142,28 @@ describe("ServerConnection", () => {
     ]);
   });
 
+  it("sends a scanned QR's PIN in the first hello, once", async () => {
+    const events = setup().events;
+    const conn = new ServerConnection("10.0.0.2:9820", "dev1", "Phone", null, null, null, events);
+    conn.presetPin("123456");
+    conn.connect();
+    const socket = FakeSocket.last;
+    socket.onopen?.();
+    expect(socket.sent[0]).toMatchObject({ type: "hello", data: { pin: "123456" } });
+
+    socket.receive("error", { code: "pairing_required", message: "", reason: "wrong_pin" });
+    await flush();
+    expect(events.onPairingError).toHaveBeenCalled();
+
+    vi.useFakeTimers();
+    socket.onclose?.();
+    await vi.advanceTimersByTimeAsync(1_000);
+    vi.useRealTimers();
+    expect(FakeSocket.last).not.toBe(socket);
+    FakeSocket.last.onopen?.();
+    expect((FakeSocket.last.sent[0]!.data as { pin?: string }).pin).toBeUndefined();
+  });
+
   it("stops reporting after disconnect", async () => {
     const { conn, events, socket } = setup();
     conn.disconnect();

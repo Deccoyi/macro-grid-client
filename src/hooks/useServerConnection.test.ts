@@ -2,11 +2,12 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionEvents } from "../ws/connection";
 
-const created: Array<{ events: ConnectionEvents }> = [];
+const created: Array<{ events: ConnectionEvents; pins: string[] }> = [];
 
 vi.mock("../ws/connection", async (importOriginal) => {
   const original = await importOriginal<typeof import("../ws/connection")>();
   class FakeConnection {
+    pins: string[] = [];
     constructor(_host: string, _id: string, _name: string, _token: string | null, _tls: string | null, _fp: string | null, public events: ConnectionEvents) {
       created.push(this);
     }
@@ -14,6 +15,10 @@ vi.mock("../ws/connection", async (importOriginal) => {
       this.events.onStatusChange("connecting");
     }
     disconnect() {}
+    presetPin(pin: string) {
+      this.pins.push(pin);
+    }
+    retryWithPin() {}
     resumed() {}
     send() {
       return true;
@@ -47,5 +52,14 @@ describe("useServerConnection", () => {
 
     act(() => events.onStatusChange("connecting")); // the socket was replaced after an unlock
     expect(result.current.states).toEqual({});
+  });
+
+  it("hands the PIN of a scanned QR to the new connection, also when the screen was already waiting for a PIN", () => {
+    const { result } = renderHook(() => useServerConnection());
+    act(() => result.current.connect("10.0.0.2:9820"));
+    act(() => created[0]!.events.onStatusChange("pairing_required"));
+
+    act(() => result.current.connectScanned("10.0.0.2:9820", "654321", "9821", "ab:cd"));
+    expect(created[1]!.pins).toEqual(["654321"]);
   });
 });

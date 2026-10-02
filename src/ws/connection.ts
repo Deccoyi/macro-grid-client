@@ -111,7 +111,25 @@ export interface ConnectionEvents {
   onWelcome?: () => void;
 }
 
+const MIN_BACKOFF_MS = 500;
 const MAX_BACKOFF_MS = 10_000;
+/** Each reconnect delay is spread by up to this share either way, so phones that lost the server together do not return together. */
+const BACKOFF_JITTER = 0.2;
+/** A socket that has not opened by now is abandoned; a browser can wait far longer on an unreachable host. */
+const OPEN_TIMEOUT_MS = 5_000;
+/** An open socket that has not been answered by a welcome (or a pairing request) by now is abandoned. */
+const WELCOME_TIMEOUT_MS = 5_000;
+/** How long a liveness probe may stay unanswered before the socket is given up as dead. */
+const PROBE_TIMEOUT_MS = 2_000;
+/** Silence this long on a connected socket is probed (the server's own keep-alive pings are invisible to a page). */
+export const IDLE_PROBE_MS = 25_000;
+/** After a pause at least this long (screen locked, app in the background) the socket is replaced at once instead of probed. */
+export const RESUME_RECONNECT_MS = 3_000;
+/**
+ * The liveness probe: an `asset.get` for a hash nobody has. The server answers every such request with one `asset` message
+ * (no data), so any reply proves the connection works without adding a message type to the protocol.
+ */
+const PROBE_HASH = "0000000000000000";
 /** Optional protocol features this client understands — see ClientCapabilities.cs server-side. */
 const CAPABILITIES = ["assets", "layout.patch", ...(pluginWidgetsSupported() ? ["plugin-widgets"] : [])];
 /** How long a layout waits for the assets it references before it is shown with those icons blank. */
@@ -124,7 +142,20 @@ const ASSET_WAIT_MS = 5_000;
  */
 export class ServerConnection {
   private socket: WebSocket | PinnedWebSocket | null = null;
-  private backoffMs = 500;
+  private backoffMs = MIN_BACKOFF_MS;
+  /** Counts the sockets opened by this connection. A late event of an earlier socket carries an older number and is ignored. */
+  private generation = 0;
+  /** True from the server's welcome until the socket ends: only then can a press reach the computer. */
+  private welcomed = false;
+  /** The server's version fits this app, so it can be expected to answer a probe. */
+  private probeable = false;
+  /** The server asked for a PIN and the person is typing it: the open socket is fine and must not be replaced under them. */
+  private awaitingPin = false;
+  private lastInboundAt = 0;
+  private openTimer: ReturnType<typeof setTimeout> | null = null;
+  private welcomeTimer: ReturnType<typeof setTimeout> | null = null;
+  private probeTimer: ReturnType<typeof setTimeout> | null = null;
+  private idleTimer: ReturnType<typeof setInterval> | null = null;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   /**
@@ -166,13 +197,30 @@ export class ServerConnection {
   disconnect(): void {
     this.closedByUser = true;
     this.destroyed = true;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.socket?.close();
+    if (this.idleTimer) clearInterval(this.idleTimer);
+    this.idleTimer = null;
+    this.discardSocket();
   }
 
-  send(type: string, data?: unknown): void {
-    if (this.socket?.readyState !== WebSocket.OPEN) return;
+  /** Sends a message when the connection is working; false means it was dropped (the socket is not open), so the caller must not act as if it went out. */
+  send(type: string, data?: unknown): boolean {
+    if (this.socket?.readyState !== WebSocket.OPEN) return false;
     this.socket.send(JSON.stringify({ type, data } satisfies Envelope));
+    return true;
+  }
+
+  /**
+   * The app came back to the foreground (or the network returned) after `pausedMs`. A live-looking socket may have died while the
+   * page was frozen, and the page cannot tell, so a long pause replaces the socket at once and a short one only checks it.
+   */
+  resumed(pausedMs: number): void {
+    if (this.destroyed || this.closedByUser) return;
+    if (this.awaitingPin && this.socket !== null) return;
+    if (this.socket === null || pausedMs >= RESUME_RECONNECT_MS || !this.welcomed) {
+      this.reconnectNow(); // also ends a backoff wait
+    } else {
+      this.probe();
+    }
   }
 
   /** Retries `hello` on the still-open socket with a PIN the user just typed, after the server asked for one. */
@@ -194,6 +242,7 @@ export class ServerConnection {
 
   private open(): void {
     if (this.destroyed) return;
+    this.discardSocket();
     this.events.onStatusChange("connecting");
     // A fingerprint from the pairing QR means the server offered a TLS listener; the WebView's own
     // WebSocket cannot pin a certificate, so that case moves to the native plugin instead. No
@@ -202,44 +251,125 @@ export class ServerConnection {
       this.tlsPort && this.fingerprint && pinnedSocketAvailable()
         ? new PinnedWebSocket(`wss://${this.host.split(":")[0]}:${this.tlsPort}/ws`, this.fingerprint)
         : new WebSocket(`ws://${this.host}/ws`);
+    const gen = ++this.generation;
+    const current = () => !this.destroyed && gen === this.generation;
     this.socket = socket;
+    this.cacheProfile = null;
+    this.awaitingPin = false;
+    this.lastInboundAt = Date.now();
+    this.openTimer = setTimeout(() => current() && this.retryAfterFailure(), OPEN_TIMEOUT_MS);
 
     socket.onopen = () => {
-      if (this.destroyed) return;
-      this.backoffMs = 500;
+      if (!current()) return;
+      if (this.openTimer) clearTimeout(this.openTimer);
+      this.openTimer = null;
+      this.lastInboundAt = Date.now();
+      this.welcomeTimer = setTimeout(() => current() && this.retryAfterFailure(), WELCOME_TIMEOUT_MS);
+      // "connected" is reported when the server welcomes this device, not when the socket opens: an open socket that nobody answers is no connection.
       this.sendHello();
-      this.events.onStatusChange("connected");
     };
 
     socket.onmessage = (ev: { data: string }) => {
-      if (this.destroyed) return;
+      if (!current()) return;
       perf.count("messages");
+      // Any frame, of any kind, proves the connection works.
+      this.lastInboundAt = Date.now();
+      if (this.probeTimer) clearTimeout(this.probeTimer);
+      this.probeTimer = null;
       let envelope: Envelope;
       try {
         envelope = JSON.parse(ev.data);
       } catch {
         return;
       }
+      if (this.welcomeTimer && (envelope.type === "welcome" || envelope.type === "error")) {
+        clearTimeout(this.welcomeTimer);
+        this.welcomeTimer = null;
+      }
       // Asset data must not queue behind the very layout that is waiting for it.
       if (envelope.type === "asset") {
         this.handleAsset(envelope.data as AssetData);
         return;
       }
-      this.inbox = this.inbox.then(() => (this.destroyed ? undefined : this.handleMessage(envelope))).catch(() => {});
+      this.inbox = this.inbox.then(() => (current() ? this.handleMessage(envelope, current) : undefined)).catch(() => {});
     };
 
     socket.onclose = () => {
-      if (this.destroyed) return;
+      if (!current()) return;
+      this.socket = null;
+      this.welcomed = false;
+      this.clearTimers();
       this.events.onStatusChange("disconnected");
-      if (this.closedByUser) return;
-      this.reconnectTimer = setTimeout(() => this.open(), this.backoffMs);
-      this.backoffMs = Math.min(this.backoffMs * 2, MAX_BACKOFF_MS);
+      if (!this.closedByUser) this.scheduleReconnect();
     };
 
-    socket.onerror = () => socket.close();
+    socket.onerror = () => {
+      if (current()) this.retryAfterFailure();
+    };
   }
 
-  private async handleMessage(envelope: Envelope): Promise<void> {
+  /** Lets go of the current socket without waiting for it: closing a dead socket can take a long time to report, and its late events are ignored. */
+  private discardSocket(): void {
+    const socket = this.socket;
+    this.socket = null;
+    this.welcomed = false;
+    this.probeable = false;
+    this.generation++;
+    this.clearTimers();
+    if (!socket) return;
+    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+    try {
+      socket.close();
+    } catch {
+      // Already gone.
+    }
+  }
+
+  private clearTimers(): void {
+    for (const timer of [this.openTimer, this.welcomeTimer, this.probeTimer, this.reconnectTimer]) if (timer) clearTimeout(timer);
+    this.openTimer = this.welcomeTimer = this.probeTimer = this.reconnectTimer = null;
+  }
+
+  /** The socket failed or stopped answering: drop it and try again after the usual wait. */
+  private retryAfterFailure(): void {
+    if (this.destroyed) return;
+    this.discardSocket();
+    this.events.onStatusChange("disconnected");
+    if (!this.closedByUser) this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    const jitter = 1 + (Math.random() * 2 - 1) * BACKOFF_JITTER;
+    this.reconnectTimer = setTimeout(() => this.open(), Math.round(this.backoffMs * jitter));
+    this.backoffMs = Math.min(this.backoffMs * 2, MAX_BACKOFF_MS);
+  }
+
+  /** Replaces the socket right now, whatever it looks like, and starts the waits over. */
+  private reconnectNow(): void {
+    if (this.destroyed) return;
+    this.backoffMs = MIN_BACKOFF_MS;
+    this.open();
+  }
+
+  /** Asks the server for something it always answers; no frame within the timeout means the socket is dead and is replaced. */
+  private probe(): void {
+    if (!this.welcomed || !this.probeable || this.probeTimer) return;
+    if (!this.send("asset.get", { hashes: [PROBE_HASH] })) return this.reconnectNow();
+    this.probeTimer = setTimeout(() => {
+      this.probeTimer = null;
+      this.reconnectNow();
+    }, PROBE_TIMEOUT_MS);
+  }
+
+  private startIdleWatch(): void {
+    if (this.idleTimer) return;
+    this.idleTimer = setInterval(() => {
+      if (this.welcomed && Date.now() - this.lastInboundAt >= IDLE_PROBE_MS) this.probe();
+    }, 5_000);
+  }
+
+  private async handleMessage(envelope: Envelope, current: () => boolean): Promise<void> {
     switch (envelope.type) {
       case "welcome": {
         const data = envelope.data as WelcomeData;
@@ -247,6 +377,11 @@ export class ServerConnection {
           this.token = data.token;
           this.events.onPaired(data.token);
         }
+        this.welcomed = true;
+        this.awaitingPin = false;
+        this.backoffMs = MIN_BACKOFF_MS; // the connection really works now, not merely opened
+        this.probeable = checkServerVersion(data.serverVersion, REQUIRED_MACRO_GRID) === "ok";
+        this.startIdleWatch();
         // Receiving welcome always means the most recent hello succeeded — including a retryWithPin()
         // after a "pairing_required" error, which otherwise leaves the status stuck on that value
         // forever even though the connection is now fully working.
@@ -260,7 +395,7 @@ export class ServerConnection {
         const data = envelope.data as LayoutFullData;
         this.cacheProfile = data.profile;
         await this.ensureAssets(data.profile);
-        if (this.destroyed || this.cacheProfile !== data.profile) return;
+        if (!current() || this.cacheProfile !== data.profile) return;
         perf.mark("firstLayout");
         this.events.onLayout(resolveAssetRefs(data.profile), data.pageId, data.profile);
         break;
@@ -270,12 +405,12 @@ export class ServerConnection {
         const patched = this.cacheProfile ? applyLayoutPatch(this.cacheProfile, data) : null;
         if (!patched) {
           // We missed something and cannot patch safely: reconnecting makes the server send a full layout.
-          this.socket?.close();
+          this.reconnectNow();
           return;
         }
         this.cacheProfile = patched.profile;
         await this.ensureAssets(patched.profile);
-        if (this.destroyed || this.cacheProfile !== patched.profile) return;
+        if (!current() || this.cacheProfile !== patched.profile) return;
         this.events.onLayoutPatch(resolveAssetRefs(patched.profile), data.pageId, patched.profile, patched.changedWidgetIds);
         break;
       }
@@ -289,6 +424,7 @@ export class ServerConnection {
         const state = envelope.data as WidgetState;
         perf.count("widgetStateMessages");
         await this.ensureAssets(state.style);
+        if (!current()) return;
         this.events.onWidgetState(resolveAssetRefs(state));
         break;
       }
@@ -300,6 +436,7 @@ export class ServerConnection {
       case "error": {
         const data = envelope.data as ErrorData;
         if (data.code === "pairing_required") {
+          this.awaitingPin = true;
           this.events.onStatusChange("pairing_required");
           if (this.attemptedPin) {
           this.events.onPairingError({ reason: data.reason ?? "wrong_pin", message: data.message, retryAfterSeconds: data.retryAfterSeconds });

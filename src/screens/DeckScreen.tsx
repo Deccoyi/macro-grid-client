@@ -66,6 +66,8 @@ interface DeckScreenProps {
   onPickProfile: (id: string) => void;
   onWidgetEvent: (type: WidgetEventType, widgetId: string) => void;
   onWidgetValueCommit: (widgetId: string, value: number) => void;
+  /** Shows a short message at the bottom (like a failed action does). */
+  onNotice: (message: string) => void;
   onSwipeNextPage: () => void;
   onSwipePrevPage: () => void;
   onSettingsOpenChange: (open: boolean) => void;
@@ -111,6 +113,7 @@ export function DeckScreen({
   onPickProfile,
   onWidgetEvent,
   onWidgetValueCommit,
+  onNotice,
   onSwipeNextPage,
   onSwipePrevPage,
   onSettingsOpenChange,
@@ -156,6 +159,7 @@ export function DeckScreen({
   // The sites that are about to be live; the phone writes them down before any iframe is mounted (write-ahead).
   const wantedSites = useMemo(() => webPlan.live.map((c) => c.siteId), [webPlan]);
   const confirmedSites = useConfirmedWebSites(wantedSites, webGuard.ready);
+  const onUnavailableTap = useCallback((names: readonly string[]) => onNotice(t("widget.sourceUnavailable") + names.join(", ")), [onNotice]);
   const onTap = useCallback((widgetId: string) => setTapped((prev) => new Set(prev).add(widgetId)), []);
   const renderWidget = (widget: Widget) => {
     const siteId = siteOf(widget);
@@ -179,6 +183,7 @@ export function DeckScreen({
         onDragValuesChange={onDragValuesChange}
         onTurnOn={webGuard.onTurnOn}
         onTap={onTap}
+        onUnavailableTap={onUnavailableTap}
       />
     );
   };

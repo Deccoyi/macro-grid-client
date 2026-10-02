@@ -103,6 +103,13 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     [],
   );
 
+  /** One short message at the bottom (a failed action, or the sources an unavailable widget lacks); it clears itself. */
+  const showNotice = useCallback((message: string) => {
+    if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
+    setActionError(message);
+    actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
+  }, []);
+
   const connect = useCallback((targetHost: string) => {
     connectionRef.current?.disconnect();
     batcher.clear();
@@ -167,11 +174,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
             // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
             return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
           }),
-        onActionError: (message) => {
-          if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
-          setActionError(message);
-          actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
-        },
+        onActionError: showNotice,
         onPairingError: setPairingError,
         onPluginWidgetMessage: (type, data) => widgetEventsRef.current?.onPluginWidgetMessage?.(type, data),
         onAsset: (hash, data) => widgetEventsRef.current?.onAsset?.(hash, data) ?? false,
@@ -180,7 +183,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     );
     connectionRef.current = connection;
     connection.connect();
-  }, [batcher]);
+  }, [batcher, showNotice]);
 
   // Reconnect automatically to the last known server on launch. The very first render already shows any
   // cached layout (see the initial state above) so a cold start looks like the deck immediately, not the
@@ -294,6 +297,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     profiles,
     autoSwitch,
     actionError,
+    showNotice,
     versionNotice,
     dismissVersionNotice: () => setVersionNotice(null),
     pairingError,

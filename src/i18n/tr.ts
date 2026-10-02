@@ -112,6 +112,8 @@ export const tr = {
   "widget.unavailable.invalid": "Widget reddedildi",
   "widget.unavailable.noWidget": "Plugin'de böyle bir widget yok",
   "widget.unavailable.unsupported": "Bu uygulama plugin widget'larını gösteremiyor",
+  "widget.sourceUnavailable": "Şu an kullanılamıyor: ",
+  "widget.sourceUnavailable.hint": "Bu widget'ın kullandığı bir kaynağın değeri yok",
   "widget.unavailable.off": "Plugin widget'ları Ayarlar'da kapalı",
   "widget.stopped.frozen": "Durdu: yanıt vermiyor",
   "widget.stopped.startTimeout": "Durdu: başlamadı",

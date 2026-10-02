@@ -114,6 +114,8 @@ export const en: Record<DictKey, string | ((...args: string[]) => string)> = {
   "widget.unavailable.invalid": "The widget was refused",
   "widget.unavailable.noWidget": "The plugin has no such widget",
   "widget.unavailable.unsupported": "This app cannot show plugin widgets",
+  "widget.sourceUnavailable": "Not available now: ",
+  "widget.sourceUnavailable.hint": "A source this widget uses has no value",
   "widget.unavailable.off": "Plugin widgets are off in Settings",
   "widget.stopped.frozen": "Stopped: not responding",
   "widget.stopped.startTimeout": "Stopped: did not start",

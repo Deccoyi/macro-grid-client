@@ -10,7 +10,7 @@ function props(widget: Widget, over: Partial<DeckWidgetProps> = {}): DeckWidgetP
   return {
     widget, state: undefined, dragValue: undefined, webLive: false, siteId: null, siteOff: false, waiting: false,
     blockedHosts: [], webTexts: { empty: "", refused: "" }, pluginLive: false,
-    onWidgetEvent: vi.fn(), onWidgetValueCommit: vi.fn(), onDragValuesChange: vi.fn(), onTurnOn: vi.fn(), onTap: vi.fn(),
+    onWidgetEvent: vi.fn(), onWidgetValueCommit: vi.fn(), onDragValuesChange: vi.fn(), onTurnOn: vi.fn(), onTap: vi.fn(), onUnavailableTap: vi.fn(),
     ...over,
   };
 }
@@ -43,5 +43,19 @@ describe("DeckWidget", () => {
     fireEvent.pointerUp(el);
     expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.down", "a");
     expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.up", "a");
+  });
+  it("marks a widget whose sources have no value, names them on a tap, and still lets a press through", () => {
+    const base = props(button("a"));
+    const { container } = render(<DeckWidget {...base} state={{ widgetId: "a", unavailable: ["obs.streaming"] }} />);
+    fireEvent.click(container.querySelector("button")!);
+    expect(base.onUnavailableTap).toHaveBeenCalledWith(["obs.streaming"]);
+    const el = container.querySelector("[data-ms-widget-host]")!;
+    fireEvent.pointerDown(el);
+    expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.down", "a");
+  });
+
+  it("shows no mark for a state without unavailable sources (an older server)", () => {
+    const { container } = render(<DeckWidget {...props(button("a"))} state={{ widgetId: "a", text: "x" }} />);
+    expect(container.querySelector("button")).toBeNull();
   });
 });

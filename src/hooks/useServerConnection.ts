@@ -199,6 +199,14 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     if (status !== "connected") setDragValues((prev) => (Object.keys(prev).length === 0 ? prev : {}));
   }, [status]);
 
+  // The live looks and texts kept from before the link dropped (a busy colour, a fade) are stale once it has: drawing them for a moment
+  // after an unlock shows a state the computer left long ago. The widgets fall back to their own look until the server's state arrives.
+  useEffect(() => {
+    if (status === "connected") return;
+    batcher.clear();
+    setStates((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [status]);
+
   // A locked screen freezes the page and may kill its socket without any event. These signals tell the connection the app is back:
   // the page becoming visible again, the network returning, or a clock gap bigger than a tick (the page was frozen).
   useEffect(() => {

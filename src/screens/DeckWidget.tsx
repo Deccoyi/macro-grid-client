@@ -26,6 +26,8 @@ export interface DeckWidgetProps {
   onDragValuesChange: (updater: (prev: Record<string, number>) => Record<string, number>) => void;
   onTurnOn: (id: string) => void;
   onTap: (widgetId: string) => void;
+  /** The person tapped the warning mark of a widget whose sources have no value: tells them which ones. */
+  onUnavailableTap: (names: readonly string[]) => void;
 }
 
 /**
@@ -35,7 +37,7 @@ export interface DeckWidgetProps {
  */
 export const DeckWidget = memo(function DeckWidget({
   widget, state, dragValue, webLive, siteId, siteOff, waiting, blockedHosts, webTexts, pluginLive,
-  onWidgetEvent, onWidgetValueCommit, onDragValuesChange, onTurnOn, onTap,
+  onWidgetEvent, onWidgetValueCommit, onDragValuesChange, onTurnOn, onTap, onUnavailableTap,
 }: DeckWidgetProps) {
   perf.count("widgetDraws");
   const id = widget.id;
@@ -78,6 +80,9 @@ export const DeckWidget = memo(function DeckWidget({
       webBlockedHosts={blockedHosts}
       webTexts={webTexts}
       pluginLive={pluginLive}
+      unavailable={state?.unavailable}
+      unavailableLabel={t("widget.sourceUnavailable.hint")}
+      onUnavailableTap={onUnavailableTap}
       haptics
       onPress={onPress}
       onRelease={onRelease}

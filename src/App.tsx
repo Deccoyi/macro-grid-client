@@ -205,6 +205,7 @@ export function App() {
       }}
       onWidgetEvent={onWidgetEvent}
       onWidgetValueCommit={onWidgetValueCommit}
+      onNotice={conn.showNotice}
       onSwipeNextPage={conn.nextPage}
       onSwipePrevPage={conn.prevPage}
       onSettingsOpenChange={setSettingsOpen}

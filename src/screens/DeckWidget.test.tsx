@@ -44,14 +44,15 @@ describe("DeckWidget", () => {
     expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.down", "a");
     expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.up", "a");
   });
-  it("marks a widget whose sources have no value, names them on a tap, and still lets a press through", () => {
+  it("marks a widget whose sources have no value, names them on a tap, and does not let a press through", () => {
     const base = props(button("a"));
     const { container } = render(<DeckWidget {...base} state={{ widgetId: "a", unavailable: ["obs.streaming"] }} />);
     fireEvent.click(container.querySelector("button")!);
     expect(base.onUnavailableTap).toHaveBeenCalledWith(["obs.streaming"]);
     const el = container.querySelector("[data-ms-widget-host]")!;
     fireEvent.pointerDown(el);
-    expect(base.onWidgetEvent).toHaveBeenCalledWith("widget.down", "a");
+    fireEvent.pointerUp(el);
+    expect(base.onWidgetEvent).not.toHaveBeenCalled();
   });
 
   it("shows no mark for a state without unavailable sources (an older server)", () => {

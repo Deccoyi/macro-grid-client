@@ -19,6 +19,7 @@ export const en: Record<DictKey, string | ((...args: string[]) => string)> = {
   "connect.scanQr": "Scan QR",
   "connect.savedServers": "Saved servers",
   "connect.cancel": "Cancel",
+  "connect.changeServer": "Use another server",
   "connect.connecting": "Connecting…",
   "connect.retrying": "Connection lost, retrying…",
   "connect.pairHint": "This device is not paired yet. Open \"Pairing\" in the Macro Grid editor on your computer and enter the 6-digit PIN shown there.",

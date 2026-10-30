@@ -5,6 +5,10 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/) format. Fo
 This repo is the **client** (phone/tablet) side of Macro Grid and is versioned independently of the server (`https://github.com/Deccoyi/macro-grid`).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-10-30
+### Added
+- **Capability `plugin-widgets`:** the app announces it in `hello.capabilities` when the device can run plugin widgets (a plugin widget script runs in a sandboxed frame). A server that knows it sends `props.runtime` on `plugin-widget` widgets and the app fetches the script and its assets with `asset.get`; an older server never sends it and the widget stays unavailable. `macroGrid` stays `1.0.0`: nothing in the app needs a newer server.
 ### Changed
 - **Assets move to the device database:** the asset cache is in IndexedDB instead of `localStorage`; old entries are carried over on the first start. The shown page is kept in `macro-grid.layoutPage.<host>`, the layout in `macro-grid.layoutCache.<host>` as before. No protocol change.
 

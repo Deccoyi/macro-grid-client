@@ -5,6 +5,7 @@ import { ShadowHost } from "../style/ShadowHost";
 import { widgetBaseCss } from "../style/widgetBaseCss";
 import type { Widget, WidgetStyle } from "../types";
 import { ButtonContent } from "./ButtonContent";
+import { safeImageUrl } from "./sanitizeImageUrl";
 import { ImageContent } from "./ImageContent";
 import { KnobContent } from "./KnobContent";
 import { PlaceholderContent } from "./PlaceholderContent";
@@ -207,7 +208,7 @@ function renderContent(
       return (
         <ButtonContent
           text={text}
-          icon={effectiveStyle?.icon}
+          icon={safeImageUrl(effectiveStyle?.icon)}
           iconSize={effectiveStyle?.iconSize}
           iconPosition={effectiveStyle?.iconPosition}
         />

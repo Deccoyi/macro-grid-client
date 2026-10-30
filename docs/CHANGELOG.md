@@ -3,6 +3,8 @@
 New features and fixes in the Macro Grid phone app. For technical details, see [CHANGELOG-developer.md](CHANGELOG-developer.md).
 
 ## Unreleased
+
+## 0.5.0 - 2026-10-30
 ### New
 - **Scan the QR code on the PIN screen:** when the app asks for a PIN, you can scan the QR code of another server, or go back to typing a server address.
 - **Icons follow the text colour:** an icon picked in the editor takes the colour of the widget's text, so a colour that changes with a variable recolours the icon too. Icons picked earlier keep their colour.
@@ -21,8 +23,6 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 - **The app no longer closes when the page view crashes:** if a web page uses up all its memory, the deck reloads instead of the app shutting down.
 - **Reconnects after the screen was locked:** the phone connects again by itself, shows a quiet "Reconnecting" note, and dims the deck until it works instead of flashing red.
 - **A button held while the phone locks is let go:** the computer no longer keeps it pressed.
-
-### Fixed
 - **Smoother busy pages:** only the widgets that really change are redrawn, so a page with many clocks no longer redraws its buttons and sliders every second.
 
 ## 0.4.1 - 2026-09-29

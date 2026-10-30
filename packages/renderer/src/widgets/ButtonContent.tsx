@@ -64,7 +64,7 @@ export function ButtonContent({ text, icon, iconSize = 28, iconPosition = "top" 
           // The shape is a mask painted with the text colour (currentColor), so a dynamic text colour recolours the icon too.
           <span className="ms-icon ms-icon-tint" aria-hidden="true" style={{ ...tintStyle(icon), width: iconSize, height: iconSize, margin: 0, flex: "none" }} />
         )}
-        {plainIcon && isSafeImageUrl(plainIcon) && <img className="ms-icon" src={plainIcon} alt="" aria-hidden="true" style={{ width: iconSize, height: iconSize, margin: 0, flex: "none" }} />}
+        {plainIcon && /^(https?:|data:image\/)/i.test(plainIcon) && isSafeImageUrl(plainIcon) && <img className="ms-icon" src={plainIcon} alt="" aria-hidden="true" style={{ width: iconSize, height: iconSize, margin: 0, flex: "none" }} />}
         {text && <span className="ms-text">{text}</span>}
       </div>
     </div>

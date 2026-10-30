@@ -30,7 +30,7 @@ export function isSafeImageUrl(url: string | undefined): boolean {
  * string to pass down (or undefined when it is refused), so components never receive an unchecked value.
  */
 export function safeImageUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  const trimmed = url.trim();
-  return /^(https?:\/\/|data:image\/)/i.test(trimmed) && isSafeImageUrl(trimmed) ? trimmed : undefined;
+  if (!url || !isSafeImageUrl(url)) return undefined;
+  const parsed = new URL(url.trim());
+  return ALLOWED_PROTOCOLS.has(parsed.protocol) ? parsed.href : undefined;
 }

@@ -9,6 +9,8 @@ This repo is the **client** (phone/tablet) side of Macro Grid and is versioned i
 ## [0.5.0] - 2026-10-30
 ### Added
 - **Capability `plugin-widgets`:** the app announces it in `hello.capabilities` when the device can run plugin widgets (a plugin widget script runs in a sandboxed frame). A server that knows it sends `props.runtime` on `plugin-widget` widgets and the app fetches the script and its assets with `asset.get`; an older server never sends it and the widget stays unavailable. `macroGrid` stays `1.0.0`: nothing in the app needs a newer server.
+- **PIN from a scanned QR in the first `hello`:** a PIN that came from a QR code (`ServerConnection.presetPin`) is sent in the first `hello` that leaves, once; a reconnect after a wrong PIN sends none. The message shape is unchanged.
+- **Themeable unavailable mark:** the warning mark on a faded widget reads `--mg-unavailable-mark-bg` and `--mg-unavailable-mark-fg` (defaults `#e5584a` and `#fff`), so a plugin or custom CSS can restyle it.
 ### Changed
 - **Assets move to the device database:** the asset cache is in IndexedDB instead of `localStorage`; old entries are carried over on the first start. The shown page is kept in `macro-grid.layoutPage.<host>`, the layout in `macro-grid.layoutCache.<host>` as before. No protocol change.
 

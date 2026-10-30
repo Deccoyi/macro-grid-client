@@ -280,6 +280,9 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     [activeHost, batcher],
   );
 
+  // Stable, so the memoised widgets of the deck that report presses through it are not redrawn on every state update.
+  const send = useCallback((type: string, data?: unknown): boolean => connectionRef.current?.send(type, data) ?? false, []);
+
   return {
     activeHost,
     servers,
@@ -302,7 +305,7 @@ export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPlu
     connectScanned,
     forget,
     /** Sends a protocol message on the live socket. False means it was dropped (not connected); nothing is queued. */
-    send: (type: string, data?: unknown): boolean => connectionRef.current?.send(type, data) ?? false,
+    send,
     retryWithPin: (pin: string) => {
       setPairingError(null);
       connectionRef.current?.retryWithPin(pin);

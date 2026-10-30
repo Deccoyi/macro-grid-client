@@ -62,4 +62,16 @@ describe("useServerConnection", () => {
     act(() => result.current.connectScanned("10.0.0.2:9820", "654321", "9821", "ab:cd"));
     expect(created[1]!.pins).toEqual(["654321"]);
   });
+
+  it("keeps send the same function when states change, so memoised widgets that report presses through it are not redrawn", async () => {
+    const { result } = renderHook(() => useServerConnection());
+    act(() => result.current.connect("10.0.0.2:9820"));
+    const send = result.current.send;
+    act(() => created[0]!.events.onWidgetState({ widgetId: "w", text: "1" } as never));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(result.current.states.w).toBeDefined();
+    expect(result.current.send).toBe(send);
+  });
 });

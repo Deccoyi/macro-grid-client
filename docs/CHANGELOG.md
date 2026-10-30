@@ -22,6 +22,9 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 - **Reconnects after the screen was locked:** the phone connects again by itself, shows a quiet "Reconnecting" note, and dims the deck until it works instead of flashing red.
 - **A button held while the phone locks is let go:** the computer no longer keeps it pressed.
 
+### Fixed
+- **Smoother busy pages:** only the widgets that really change are redrawn, so a page with many clocks no longer redraws its buttons and sliders every second.
+
 ## 0.4.1 - 2026-09-29
 ### Changed
 - **Web pages are marked experimental:** a heavy page can slow down or freeze the app, so the Settings switch now says so.

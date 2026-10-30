@@ -33,8 +33,14 @@ packages/renderer/  the grid and widget renderer
   them; only the widgets the patch changed lose their cached live state. A patch that does not fit (a missed message) makes the app close the socket, and the reconnect
   brings a full layout.
 
-`assets.ts` caches the large values (icons and images) the server sends once as `asset:<hash>` references: in memory and in `localStorage`, evicting the least recently used
-beyond 400 entries. Resolving references keeps the identity of every part of the layout that has none, for the same redraw reason.
+`assets.ts` caches the large values (icons and images) the server sends once as `asset:<hash>` references: in memory (what drawing reads, so resolving stays synchronous) and on the device in IndexedDB (`storage/assetDb.ts`), evicting the least recently used
+beyond 1000 entries or about 48 million characters. `prepareAssets` runs before the first draw (at most one second): it opens the database, carries the old `localStorage` assets over
+(each removed only after it was written) and loads the ones the cached layouts use. Without a database the cache stays in `localStorage` (400 entries) as before. Resolving references keeps the identity of every part of the layout that has none, for the same redraw reason.
+
+## Drawing
+
+State messages are collected and applied once per frame (`ws/stateBatcher.ts`), and every deck widget is a memoised `DeckWidget` fed its own state, so one change redraws one widget.
+The event callbacks passed down are stable; keep them so, or the memo does nothing. Settings has a switch that shows performance numbers (`perf/perfStats.ts`, off by default).
 
 ## Screens and behavior
 
@@ -49,8 +55,8 @@ beyond 400 entries. Resolving references keeps the identity of every part of the
 
 ## Caching and storage
 
-Everything is in `localStorage`, per server host where it makes sense: the pairing token, the last layout (in its compact `asset:` form, so it stays small), the saved servers,
-the settings, the drawer handle position and the assets. On a cold start the last layout is drawn immediately with an "offline, cached" badge while the connection is made.
+Everything except the assets is in `localStorage`, per server host where it makes sense: the pairing token, the last layout (in its compact `asset:` form, so it stays small), the shown page
+(its own key, so a page change does not rewrite the layout), the saved servers, the settings and the drawer handle position. The assets are in the device database. On a cold start the last layout is drawn immediately with an "offline, cached" badge while the connection is made.
 Pairing always takes precedence over a cached layout: if the server asks for a PIN, the connect screen is shown even when a layout is cached.
 
 ## The renderer
@@ -62,8 +68,20 @@ the two are deliberately not kept in sync, so a change that both need is made in
 The `web` widget is an iframe (`WebContent`, address rule `isSafeWebUrl`). Its `sandbox` has no popups, downloads, top navigation, dialogs, orientation or pointer lock, its `allow` is
 empty (no camera, location, clipboard, ...) and its referrer policy is `no-referrer`; the attributes are set once when the iframe is created. An address must be `http` or `https`,
 without credentials, and never the server's own address or any loopback form. A button (`core.web` on the server) can change the address on this phone only: it arrives in `widget.state`
-as `url` (an empty string goes back to the widget's own) and `reload` (a counter). Only the shown page of the grid is mounted, and only while the app is in front. A `plugin-html`
-widget draws a placeholder for now.
+as `url` (an empty string goes back to the widget's own) and `reload` (a counter). Only the shown page of the grid is mounted. A `plugin-html` widget draws a placeholder for now.
+
+A page cannot be limited in memory or CPU and shares the one renderer process with the deck, so the phone guards itself around web pages:
+- **Crash guard.** The crash guard of plugin widgets (`WidgetGuard`, `WidgetCrashRules`) also covers web pages. The suspect of a page is its site, written `web:<host>` (host only, never the path or query:
+  an alerts link carries a secret). The ids of everything live, plugins and `web:` hosts, go to the phone in one call, and an iframe is mounted only after the phone has confirmed it (write-ahead,
+  `useConfirmedWebSites`; the plugin widgets' own report waits for it too). A page that navigates to another site on its own stays blamed under its starting host. A site the guard turned off draws a
+  placeholder with a "Turn on" button, and Settings lists it next to the plugins.
+- **Recommended live number.** Web widgets have their own number (`autoWebLimit` in `widgets/limits.ts`: 1 on a small phone, up to 3 on a strong one; Settings can choose a number or no limit) and do not
+  take slots from plugin widgets. `planWebLoad` gives the slots in order (widgets kept loaded on other pages first, then the shown page in reading order); the rest draw a "Tap to load" placeholder,
+  and a tap loads that widget even over the number (until the page is left).
+- **Keep loaded.** A web widget with `props.keepLoaded` stays mounted, hidden, when its page is left (`DeckScreen` keeps such a page in the document with `display: none`, in the profile's page order,
+  because moving an iframe reloads it). Only that widget stays; the rest of the page is unmounted. It counts toward the live number.
+- **Background.** Web pages are unloaded 30 seconds after the app goes to the background or the screen turns off (`useHeldTrue`), and load again when it is back (a chat reconnects by itself). Plugin widgets are paused at once instead.
+- **Not built: slow-page detection.** A frozen iframe blocks the parent's own long-task report, so no widget can be named as slow; only the crash guard and Tap to load exist.
 
 ## Native Android pieces
 

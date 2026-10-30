@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PluginWidgetContext } from "@macro/renderer";
 import { InfoToast } from "./components/InfoToast";
 import { UpdateScreen } from "./components/UpdateScreen";
 import { DEFAULT_SERVER_PORT } from "./constants";
 import { useKeepAwake } from "./hooks/useKeepAwake";
 import { useLanguage } from "./hooks/useLanguage";
+import { usePluginWidgets } from "./hooks/usePluginWidgets";
 import { useServerConnection } from "./hooks/useServerConnection";
-import { useAppVisible, useWebPagesSafe } from "./hooks/useWebPages";
+import { useAppVisible, useHeldTrue, useWebPagesSafe, WEB_BACKGROUND_UNLOAD_MS } from "./hooks/useWebPages";
 import { useUpdate } from "./hooks/useUpdate";
 import { t } from "./i18n";
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -13,6 +15,7 @@ import { ConnectScreen } from "./screens/ConnectScreen";
 import { DeckScreen } from "./screens/DeckScreen";
 import { QrScanScreen, type ScannedPairing } from "./screens/QrScanScreen";
 import { HOST_KEY } from "./storage/keys";
+import { webLimitFor } from "./widgets/limits";
 import { applySettings, loadSettings, saveSettings, type AppSettings } from "./storage/settings";
 import { readText } from "./storage/storage";
 
@@ -24,23 +27,52 @@ function withDefaultPort(host: string): string {
 
 /** Chooses between the QR scanner, the connect screen and the deck, and holds the UI-only state (panels, form text). */
 export function App() {
-  const conn = useServerConnection();
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
+  // The widget host needs the person's settings and the shown page, and the connection needs the host: settings first, the connection next.
+  const [shownPageId, setShownPageId] = useState<string | undefined>(undefined);
+  const widgets = usePluginWidgets(appSettings, shownPageId);
+  const conn = useServerConnection(widgets.connectionEvents);
+  widgets.setSend(conn.send);
   /** The connect screen's text field — `conn.activeHost` is the server the socket is actually pointed at. */
   const [host, setHost] = useState(() => readText(HOST_KEY) ?? "");
   /** Forces the connect screen over a live/cached deck so a second server can be added. */
   const [addingServer, setAddingServer] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appSettings, setAppSettings] = useState<AppSettings>(loadSettings);
   const [scanning, setScanning] = useState(false);
   const update = useUpdate(appSettings);
   const webSafe = useWebPagesSafe();
   const appVisible = useAppVisible();
-  // A web page runs only when the phone can keep it away from the app's native bridge, the person has not turned web pages off, and the app is in front.
+  // A web page runs only when the phone can keep it away from the app's native bridge, the person has not turned web pages off, and the app is in front
+  // (or left it less than 30 seconds ago, so a short trip to another app does not reload a chat).
+  const webAppActive = useHeldTrue(appVisible, WEB_BACKGROUND_UNLOAD_MS);
   const webPages = {
-    live: webSafe === true && appSettings.showWebPages && appVisible,
+    live: webSafe === true && appSettings.showWebPages && webAppActive,
     offText: webSafe === false ? t("web.oldWebView") : !appSettings.showWebPages ? t("web.off") : undefined,
   };
+  const shownPage = conn.profile?.pages.find((p) => p.id === conn.pageId) ?? conn.profile?.pages[0];
+  useEffect(() => setShownPageId(shownPage?.id), [shownPage?.id]);
+  // What the phone says about the last crash goes to the server once, so the plugin's author sees it in the Error List.
+  const [crashReported, setCrashReported] = useState(false);
+  useEffect(() => {
+    if (crashReported || widgets.crashNotice.length === 0 || conn.status !== "connected" || !conn.profile) return;
+    for (const plugin of widgets.crashNotice) {
+      for (const p of conn.profile.pages) {
+        const w = p.widgets.find((x) => x.type === "plugin-widget" && x.props?.plugin === plugin);
+        if (w) {
+          conn.send("plugin.widget.error", { pageId: p.id, widgetId: w.id, message: "The app closed unexpectedly while this plugin's widgets were running; the phone switched them off." });
+          break;
+        }
+      }
+    }
+    setCrashReported(true);
+  }, [crashReported, widgets.crashNotice, conn.status, conn.profile, conn]);
+  // Stable, so the memoised widgets of the deck are not redrawn when something else changes; the page is read when the event happens.
+  const pageIdRef = useRef<string | undefined>(undefined);
+  pageIdRef.current = shownPage?.id;
+  const { send } = conn;
+  const onWidgetEvent = useCallback((type: string, widgetId: string) => send(type, { pageId: pageIdRef.current, widgetId }), [send]);
+  const onWidgetValueCommit = useCallback((widgetId: string, value: number) => send("widget.value", { pageId: pageIdRef.current, widgetId, value }), [send]);
   const { language } = useLanguage(); // re-renders every screen when the language is changed in Settings
 
   const { connect: connectToServer, connectScanned } = conn;
@@ -80,10 +112,11 @@ export function App() {
   // Every hook above must run on every render — this is the first point an early return is safe.
   const screen = renderScreen();
   return (
-    <>
+    <PluginWidgetContext.Provider value={widgets.context}>
       {screen}
-      <SettingsScreen open={settingsOpen} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
+      <SettingsScreen open={settingsOpen} offPlugins={[...widgets.offPlugins, ...widgets.offSites]} onTurnOnPlugin={widgets.turnOn} settings={appSettings} onChange={(next) => { setAppSettings(next); saveSettings(next); }} onClose={() => setSettingsOpen(false)} update={update} />
       <UpdateScreen update={update} />
+      {widgets.crashNotice.length > 0 && <InfoToast message={t("guard.notice", widgets.crashNotice.join(", "))} onDone={widgets.dismissNotice} durationMs={20_000} />}
       {update.justUpdatedTo && <InfoToast message={t("update.updated", update.justUpdatedTo)} onDone={update.dismissUpdated} />}
       {conn.versionNotice && (
         <InfoToast
@@ -96,7 +129,7 @@ export function App() {
           durationMs={12_000}
         />
       )}
-    </>
+    </PluginWidgetContext.Provider>
   );
 
   function renderScreen() {
@@ -138,6 +171,7 @@ export function App() {
   return (
     <DeckScreen
       page={page}
+      pages={profile.pages}
       status={conn.status}
       usingCache={conn.usingCache}
       actionError={conn.actionError}
@@ -169,13 +203,18 @@ export function App() {
         conn.changeProfile(id);
         setDrawerOpen(false);
       }}
-      onWidgetEvent={(type, widgetId) => conn.send(type, { pageId: page.id, widgetId })}
-      onWidgetValueCommit={(widgetId, value) => conn.send("widget.value", { pageId: page.id, widgetId, value })}
+      onWidgetEvent={onWidgetEvent}
+      onWidgetValueCommit={onWidgetValueCommit}
+      onNotice={conn.showNotice}
       onSwipeNextPage={conn.nextPage}
       onSwipePrevPage={conn.prevPage}
       onSettingsOpenChange={setSettingsOpen}
       update={update}
       webPages={webPages}
+      webLimit={webLimitFor(appSettings)}
+      webGuard={{ ready: widgets.guardReady, disabled: widgets.disabledIds, onTurnOn: widgets.turnOn }}
+      pluginLive={appVisible}
+      showPerformance={appSettings.showPerformance}
     />
   );
   }

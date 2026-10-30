@@ -1,4 +1,4 @@
-import { fingerprintKey, layoutCacheKey, tlsPortKey, tokenKey } from "./keys";
+import { fingerprintKey, layoutCacheKey, layoutPageKey, tlsPortKey, tokenKey } from "./keys";
 import { readJson, removeItem, writeJson } from "./storage";
 
 const SERVERS_KEY = "macro-grid.servers";
@@ -25,6 +25,7 @@ export function forgetServer(host: string): string[] {
   saveServers(next);
   removeItem(tokenKey(host));
   removeItem(layoutCacheKey(host));
+  removeItem(layoutPageKey(host));
   removeItem(tlsPortKey(host));
   removeItem(fingerprintKey(host));
   return next;

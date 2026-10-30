@@ -44,6 +44,16 @@ describe("resolveAssetRefs", () => {
   });
 });
 
+describe("plugin widget runtime info", () => {
+  it("is neither collected nor resolved: the widget host fetches the script itself", async () => {
+    const { collectAssetRefs, missingAssets, resolveAssetRefs } = await load();
+    const widget = { props: { runtime: { code: `asset:${H1}`, assets: { "a.png": `asset:${H2}` } }, icon: `asset:${H2}` } };
+    expect([...collectAssetRefs(widget)]).toEqual([H2]);
+    expect(missingAssets(widget)).toEqual([H2]);
+    expect(resolveAssetRefs(widget).props.runtime.code).toBe(`asset:${H1}`);
+  });
+});
+
 describe("persistence", () => {
   it("reads a stored asset after the memory cache is gone", async () => {
     const first = await load();

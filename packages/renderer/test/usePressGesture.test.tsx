@@ -35,6 +35,24 @@ afterEach(() => {
 });
 
 describe("usePressGesture", () => {
+  it("sends the release when the touch is cancelled after the press fired, and nothing when it never fired", () => {
+    const onPress = vi.fn();
+    const onRelease = vi.fn();
+    render(<TestButton onPress={onPress} onRelease={onRelease} />);
+
+    const el = screen.getByTestId("btn");
+    fireEvent.pointerDown(el, { pointerId: 1, pointerType: "mouse" });
+    fireEvent.pointerCancel(el, { pointerId: 1 });
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onRelease).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(el, { pointerId: 1, pointerType: "touch" });
+    fireEvent.pointerCancel(el, { pointerId: 1 }); // still inside the confirmation window: the press never fired
+    vi.advanceTimersByTime(200);
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onRelease).toHaveBeenCalledTimes(1);
+  });
+
   it("fires onPress on pointer down and onRelease on pointer up", () => {
     const onPress = vi.fn();
     const onRelease = vi.fn();

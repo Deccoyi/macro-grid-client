@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile, WidgetState } from "@macro/renderer";
 import { ACTION_ERROR_MS } from "../constants";
 import { t } from "../i18n";
+import { perf } from "../perf/perfStats";
 import { getDeviceId } from "../storage/deviceId";
 import { fingerprintKey, HOST_KEY, tlsPortKey, tokenKey } from "../storage/keys";
-import { loadLayoutCache, resolveCachedProfile, saveLayoutCache } from "../storage/layoutCache";
+import { loadLayoutCache, resolveCachedProfile, saveLayoutCache, saveLayoutPage } from "../storage/layoutCache";
 import { forgetServer, loadServers, rememberServer } from "../storage/servers";
 import { readText, removeItem, writeText } from "../storage/storage";
-import { ServerConnection, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
+import { RESUME_RECONNECT_MS, ServerConnection, type ConnectionEvents, type AutoSwitchInfo, type ConnectionStatus, type PairingError, type ProfileSummary } from "../ws/connection";
 import type { ServerCompat } from "../ws/serverCompat";
+import { createStateBatcher } from "../ws/stateBatcher";
+
+/** A timer tick that arrives this much later than planned means the page was frozen in between (a locked screen). */
+const FROZEN_GAP_MS = 5000;
+/** The network returning says nothing about how long the socket was idle, so it is treated as a long pause: the socket is replaced. */
+const RESUME_ONLINE_PAUSE_MS = RESUME_RECONNECT_MS;
 
 /** A server whose version does not fit this app: what to tell the person, with the versions involved. */
 export interface VersionNotice {
@@ -30,7 +37,10 @@ function omitKeys<T>(record: Record<string, T>, keys: Iterable<string>): Record<
  * to the last used server on launch, and shows the cached layout of a host while the first real one is
  * still in flight.
  */
-export function useServerConnection() {
+export function useServerConnection(widgetEvents?: Pick<ConnectionEvents, "onPluginWidgetMessage" | "onAsset" | "onWelcome">) {
+  // The widget host is made after this hook runs; connections made later read it through this ref.
+  const widgetEventsRef = useRef(widgetEvents);
+  widgetEventsRef.current = widgetEvents;
   const [initialHost] = useState(() => readText(HOST_KEY) ?? "");
   const [initialCache] = useState(() => loadLayoutCache(initialHost));
 
@@ -61,9 +71,6 @@ export function useServerConnection() {
   const connectionRef = useRef<ServerConnection | null>(null);
   /** The current layout in its compact `asset:` form — what gets written to the layout cache. */
   const cacheProfileRef = useRef<Profile | null>(null);
-  /** A PIN that came from a scanned QR code, submitted automatically the moment the server actually
-   * asks for one — so scanning fully replaces typing both the host and the PIN by hand. */
-  const pendingQrPinRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (pairingError?.retryAfterSeconds == null) {
@@ -77,8 +84,32 @@ export function useServerConnection() {
     return () => clearInterval(interval);
   }, [pairingError]);
 
-  const connect = useCallback((targetHost: string) => {
+  /** Live states of the same frame are applied together: one state update and one draw however many arrived. */
+  const batcher = useMemo(
+    () =>
+      createStateBatcher((batch) => {
+        perf.count("stateUpdates");
+        setStates((prev) => {
+          const next = { ...prev };
+          for (const [id, state] of Object.entries(batch)) next[id] = { ...prev[id], ...state };
+          return next;
+        });
+        const withValue = Object.entries(batch).filter(([, state]) => state.value !== undefined).map(([id]) => id);
+        if (withValue.length > 0) setDragValues((prev) => (withValue.some((id) => id in prev) ? omitKeys(prev, withValue) : prev));
+      }),
+    [],
+  );
+
+  /** One short message at the bottom (a failed action, or the sources an unavailable widget lacks); it clears itself. */
+  const showNotice = useCallback((message: string) => {
+    if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
+    setActionError(message);
+    actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
+  }, []);
+
+  const connect = useCallback((targetHost: string, presetPin?: string | null) => {
     connectionRef.current?.disconnect();
+    batcher.clear();
     writeText(HOST_KEY, targetHost);
     setActiveHost(targetHost);
     setStates({});
@@ -102,6 +133,7 @@ export function useServerConnection() {
       {
         onStatusChange: setStatus,
         onLayout: (nextProfile, nextPageId, cacheProfile) => {
+          batcher.clear();
           cacheProfileRef.current = cacheProfile;
           setProfile(nextProfile);
           setPageId(nextPageId);
@@ -112,6 +144,7 @@ export function useServerConnection() {
           saveLayoutCache(targetHost, cacheProfile, nextPageId);
         },
         onLayoutPatch: (nextProfile, nextPageId, cacheProfile, changedWidgetIds) => {
+          batcher.flushNow();
           cacheProfileRef.current = cacheProfile;
           setProfile(nextProfile);
           setPageId(nextPageId);
@@ -122,15 +155,11 @@ export function useServerConnection() {
           saveLayoutCache(targetHost, cacheProfile, nextPageId);
         },
         onPageChange: (nextPageId) => {
+          batcher.flushNow();
           setPageId(nextPageId);
-          if (cacheProfileRef.current) saveLayoutCache(targetHost, cacheProfileRef.current, nextPageId);
+          if (cacheProfileRef.current) saveLayoutPage(targetHost, nextPageId);
         },
-        onWidgetState: (state) => {
-          setStates((prev) => ({ ...prev, [state.widgetId]: { ...prev[state.widgetId], ...state } }));
-          if (state.value !== undefined) {
-            setDragValues((prev) => (state.widgetId in prev ? omitKeys(prev, [state.widgetId]) : prev));
-          }
-        },
+        onWidgetState: batcher.push,
         onProfiles: (nextProfiles, nextAutoSwitch) => {
           setProfiles(nextProfiles);
           setAutoSwitch(nextAutoSwitch);
@@ -142,17 +171,17 @@ export function useServerConnection() {
             // Every reconnect says hello again; keep the same notice object so a toast the person dismissed does not come back.
             return prev?.compat === compat && prev.serverVersion === serverVersion ? prev : { compat, serverVersion, required };
           }),
-        onActionError: (message) => {
-          if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current);
-          setActionError(message);
-          actionErrorTimer.current = setTimeout(() => setActionError(null), ACTION_ERROR_MS);
-        },
+        onActionError: showNotice,
         onPairingError: setPairingError,
+        onPluginWidgetMessage: (type, data) => widgetEventsRef.current?.onPluginWidgetMessage?.(type, data),
+        onAsset: (hash, data) => widgetEventsRef.current?.onAsset?.(hash, data) ?? false,
+        onWelcome: () => widgetEventsRef.current?.onWelcome?.(),
       },
     );
     connectionRef.current = connection;
+    if (presetPin) connection.presetPin(presetPin);
     connection.connect();
-  }, []);
+  }, [batcher, showNotice]);
 
   // Reconnect automatically to the last known server on launch. The very first render already shows any
   // cached layout (see the initial state above) so a cold start looks like the deck immediately, not the
@@ -163,16 +192,52 @@ export function useServerConnection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // A scanned QR's PIN is only usable once the server actually says it needs one — submitting it any
-  // earlier (e.g. against an old accepted token) would be a spurious re-pair attempt.
+  // Whatever was being dragged when the link dropped is moot: the server's own value takes over on the next welcome.
   useEffect(() => {
-    if (status === "pairing_required" && pendingQrPinRef.current) {
-      connectionRef.current?.retryWithPin(pendingQrPinRef.current);
-      pendingQrPinRef.current = null;
-    }
+    if (status !== "connected") setDragValues((prev) => (Object.keys(prev).length === 0 ? prev : {}));
   }, [status]);
 
-  /** Connects to a host taken from a scanned QR code, submitting its PIN when the server asks for one.
+  // The live looks and texts kept from before the link dropped (a busy colour, a fade) are stale once it has: drawing them for a moment
+  // after an unlock shows a state the computer left long ago. The widgets fall back to their own look until the server's state arrives.
+  useEffect(() => {
+    if (status === "connected") return;
+    batcher.clear();
+    setStates((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [status]);
+
+  // A locked screen freezes the page and may kill its socket without any event. These signals tell the connection the app is back:
+  // the page becoming visible again, the network returning, or a clock gap bigger than a tick (the page was frozen).
+  useEffect(() => {
+    let hiddenAt: number | null = document.visibilityState === "hidden" ? Date.now() : null;
+    let lastTick = Date.now();
+    const resume = (pausedMs: number) => connectionRef.current?.resumed(pausedMs);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (hiddenAt !== null) {
+        const paused = Date.now() - hiddenAt;
+        hiddenAt = null;
+        lastTick = Date.now();
+        resume(paused);
+      }
+    };
+    const onOnline = () => resume(RESUME_ONLINE_PAUSE_MS); // the old socket is almost never usable after the network came back
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const gap = now - lastTick;
+      lastTick = now;
+      if (gap > FROZEN_GAP_MS && document.visibilityState === "visible") resume(gap);
+    }, 1000);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+
+  /** Connects to a host taken from a scanned QR code, sending its PIN in the first hello.
    * A `tlsPort`/`fingerprint` pair (present only when the server's QR offered one) is persisted before
    * connecting, since the transport itself needs it — unlike the pairing token, it can't wait for a
    * successful `hello`. */
@@ -185,8 +250,7 @@ export function useServerConnection() {
         removeItem(tlsPortKey(scannedHost));
         removeItem(fingerprintKey(scannedHost));
       }
-      pendingQrPinRef.current = pin;
-      connect(scannedHost);
+      connect(scannedHost, pin);
     },
     [connect],
   );
@@ -200,6 +264,7 @@ export function useServerConnection() {
       if (host !== activeHost) return;
       connectionRef.current?.disconnect();
       connectionRef.current = null;
+      batcher.clear();
       removeItem(HOST_KEY);
       setActiveHost("");
       setStatus("disconnected");
@@ -212,8 +277,11 @@ export function useServerConnection() {
       setPairingError(null);
       setVersionNotice(null);
     },
-    [activeHost],
+    [activeHost, batcher],
   );
+
+  // Stable, so the memoised widgets of the deck that report presses through it are not redrawn on every state update.
+  const send = useCallback((type: string, data?: unknown): boolean => connectionRef.current?.send(type, data) ?? false, []);
 
   return {
     activeHost,
@@ -228,6 +296,7 @@ export function useServerConnection() {
     profiles,
     autoSwitch,
     actionError,
+    showNotice,
     versionNotice,
     dismissVersionNotice: () => setVersionNotice(null),
     pairingError,
@@ -235,8 +304,8 @@ export function useServerConnection() {
     connect,
     connectScanned,
     forget,
-    /** Sends a protocol message on the live socket (dropped while disconnected). */
-    send: (type: string, data?: unknown) => connectionRef.current?.send(type, data),
+    /** Sends a protocol message on the live socket. False means it was dropped (not connected); nothing is queued. */
+    send,
     retryWithPin: (pin: string) => {
       setPairingError(null);
       connectionRef.current?.retryWithPin(pin);

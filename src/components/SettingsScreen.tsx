@@ -4,7 +4,8 @@ import { setLanguageSetting, t, type LanguageSetting } from "../i18n";
 import { useBackToClose } from "../hooks/useBackToClose";
 import { useLanguage } from "../hooks/useLanguage";
 import type { UpdateController } from "../hooks/useUpdate";
-import type { AppSettings, OrientationSetting, UpdateNetworkSetting } from "../storage/settings";
+import { autoLiveLimits, autoWebLimit } from "../widgets/limits";
+import type { AppSettings, OrientationSetting, PluginWidgetLimitSetting, UpdateNetworkSetting } from "../storage/settings";
 import { versionToString } from "../update/releaseVersion";
 import { colors, sectionLabelStyle, selectedTint } from "../theme";
 
@@ -16,6 +17,8 @@ const ORIENTATION_LABEL_KEYS = {
 } as const;
 const LANGUAGES: LanguageSetting[] = ["auto", "tr", "en"];
 const LANGUAGE_LABEL_KEYS = { auto: "settings.language.auto", tr: "settings.language.tr", en: "settings.language.en" } as const;
+const WIDGET_LIMITS: PluginWidgetLimitSetting[] = ["auto", "custom", "none"];
+const WIDGET_LIMIT_LABEL_KEYS = { auto: "settings.widgets.limit.auto", custom: "settings.widgets.limit.custom", none: "settings.widgets.limit.none" } as const;
 const NETWORKS: UpdateNetworkSetting[] = ["wifi", "any"];
 const NETWORK_LABEL_KEYS = { wifi: "settings.updates.network.wifi", any: "settings.updates.network.any" } as const;
 
@@ -116,6 +119,9 @@ export function SettingsButton({ onOpen }: { onOpen: () => void }) {
 
 interface SettingsScreenProps {
   open: boolean;
+  /** Plugins whose widgets the phone switched off after a crash. */
+  offPlugins: string[];
+  onTurnOnPlugin: (plugin: string) => void;
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
   onClose: () => void;
@@ -123,7 +129,7 @@ interface SettingsScreenProps {
 }
 
 /** The full-screen settings page: display, updates and the about text. A list of rows, not a stack of cards. */
-export function SettingsScreen({ open, settings, onChange, onClose, update }: SettingsScreenProps) {
+export function SettingsScreen({ open, offPlugins, onTurnOnPlugin, settings, onChange, onClose, update }: SettingsScreenProps) {
   useBackToClose(open, onClose);
   const { setting: languageSetting } = useLanguage();
   /** The result of the last "clear web page data" press: null before any. */
@@ -174,6 +180,84 @@ export function SettingsScreen({ open, settings, onChange, onClose, update }: Se
           <div style={hintStyle}>{t("settings.web.clear.hint")}</div>
           {webDataCleared !== null && <div style={statusStyle}>{webDataCleared ? t("settings.web.cleared") : t("settings.web.clearFailed")}</div>}
         </div>
+        <div style={blockStyle}>
+          <div style={labelStyle}>{t("settings.web.limit")}</div>
+          <div style={segmentRowStyle}>
+            {WIDGET_LIMITS.map((mode) => (
+              <button key={mode} onClick={() => onChange({ ...settings, webWidgetLimit: mode })} style={segmentStyle(settings.webWidgetLimit === mode)}>
+                {mode === "custom" && settings.webWidgetLimit === "custom" ? `${t(WIDGET_LIMIT_LABEL_KEYS[mode])}: ${settings.webWidgetLimitCount}` : t(WIDGET_LIMIT_LABEL_KEYS[mode])}
+              </button>
+            ))}
+          </div>
+          {settings.webWidgetLimit === "custom" && (
+            <div style={segmentRowStyle}>
+              <button aria-label="-" onClick={() => onChange({ ...settings, webWidgetLimitCount: Math.max(1, settings.webWidgetLimitCount - 1) })} style={actionButtonStyle}>
+                −
+              </button>
+              <button aria-label="+" onClick={() => onChange({ ...settings, webWidgetLimitCount: Math.min(16, settings.webWidgetLimitCount + 1) })} style={actionButtonStyle}>
+                +
+              </button>
+            </div>
+          )}
+          {settings.webWidgetLimit === "auto" && <div style={hintStyle}>{t("settings.web.limit.recommended", String(autoWebLimit()))}</div>}
+          <div style={hintStyle}>{t("settings.web.limit.hint")}</div>
+        </div>
+
+        <div style={sectionStyle}>{t("settings.section.widgets")}</div>
+        <label style={rowStyle}>
+          <div>
+            <div style={labelStyle}>{t("settings.widgets.show")}</div>
+            <div style={hintStyle}>{t("settings.widgets.show.hint")}</div>
+          </div>
+          <Switch checked={settings.showPluginWidgets} onChange={(showPluginWidgets) => onChange({ ...settings, showPluginWidgets })} />
+        </label>
+        <div style={blockStyle}>
+          <div style={labelStyle}>{t("settings.widgets.limit")}</div>
+          <div style={segmentRowStyle}>
+            {WIDGET_LIMITS.map((mode) => (
+              <button key={mode} onClick={() => onChange({ ...settings, pluginWidgetLimit: mode })} style={segmentStyle(settings.pluginWidgetLimit === mode)}>
+                {mode === "custom" && settings.pluginWidgetLimit === "custom" ? `${t(WIDGET_LIMIT_LABEL_KEYS[mode])}: ${settings.pluginWidgetLimitCount}` : t(WIDGET_LIMIT_LABEL_KEYS[mode])}
+              </button>
+            ))}
+          </div>
+          {settings.pluginWidgetLimit === "custom" && (
+            <div style={segmentRowStyle}>
+              <button
+                aria-label="-"
+                onClick={() => onChange({ ...settings, pluginWidgetLimitCount: Math.max(1, settings.pluginWidgetLimitCount - 1) })}
+                style={actionButtonStyle}
+              >
+                −
+              </button>
+              <button
+                aria-label="+"
+                onClick={() => onChange({ ...settings, pluginWidgetLimitCount: Math.min(64, settings.pluginWidgetLimitCount + 1) })}
+                style={actionButtonStyle}
+              >
+                +
+              </button>
+            </div>
+          )}
+          {settings.pluginWidgetLimit === "auto" && (() => {
+            const auto = autoLiveLimits();
+            return <div style={hintStyle}>{t("settings.widgets.limit.recommended", String(auto.maxLive), String(auto.maxLiveUnverified))}</div>;
+          })()}
+          <div style={hintStyle}>{t("settings.widgets.limit.hint")}</div>
+        </div>
+        {offPlugins.length > 0 && (
+          <div style={blockStyle}>
+            <div style={labelStyle}>{t("settings.widgets.off")}</div>
+            <div style={hintStyle}>{t("settings.widgets.off.hint")}</div>
+            {offPlugins.map((plugin) => (
+              <div key={plugin} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+                <span style={{ fontSize: 14 }}>{plugin.startsWith("web:") ? plugin.slice(4) : plugin}</span>
+                <button onClick={() => onTurnOnPlugin(plugin)} style={actionButtonStyle}>
+                  {t("settings.widgets.turnOn")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={sectionStyle}>{t("settings.section.language")}</div>
         <div style={blockStyle}>
@@ -230,6 +314,14 @@ export function SettingsScreen({ open, settings, onChange, onClose, update }: Se
             <div style={hintStyle}>{t("settings.updates.webOnly")}</div>
           </div>
         )}
+
+        <label style={rowStyle}>
+          <div>
+            <div style={labelStyle}>{t("settings.performance.show")}</div>
+            <div style={hintStyle}>{t("settings.performance.show.hint")}</div>
+          </div>
+          <Switch checked={settings.showPerformance} onChange={(showPerformance) => onChange({ ...settings, showPerformance })} />
+        </label>
 
         <div style={sectionStyle}>{t("settings.section.about")}</div>
         <div style={disclaimerStyle}>{t("settings.disclaimer")}</div>

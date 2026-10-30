@@ -26,3 +26,20 @@ export function useAppVisible(): boolean {
   }, []);
   return visible;
 }
+
+/** How long web pages stay loaded after the app goes to the background or the screen turns off. */
+export const WEB_BACKGROUND_UNLOAD_MS = 30_000;
+
+/** True while the app is in front, and for `ms` after it left: a short trip to another app does not reload a chat, a long one unloads it. */
+export function useHeldTrue(value: boolean, ms: number): boolean {
+  const [held, setHeld] = useState(value);
+  useEffect(() => {
+    if (value) {
+      setHeld(true);
+      return;
+    }
+    const timer = setTimeout(() => setHeld(false), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return value || held;
+}

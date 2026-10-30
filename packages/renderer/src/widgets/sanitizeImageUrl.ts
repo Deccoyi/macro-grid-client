@@ -24,3 +24,13 @@ export function isSafeImageUrl(url: string | undefined): boolean {
   if (parsed.protocol === "data:" && !/^data:image\//i.test(trimmed)) return false;
   return true;
 }
+
+/**
+ * Validates a widget-supplied image URL once, where it enters the renderer, and returns the trimmed
+ * string to pass down (or undefined when it is refused), so components never receive an unchecked value.
+ */
+export function safeImageUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  return /^(https?:\/\/|data:image\/)/i.test(trimmed) && isSafeImageUrl(trimmed) ? trimmed : undefined;
+}

@@ -5,7 +5,7 @@ import { isSafeImageUrl } from "./sanitizeImageUrl";
 /** Marks an icon image (inside its SVG) as a plain shape that may be recoloured: the renderer then paints it with the text colour. */
 export const ICON_TINT_MARKER = "data-mg-tint";
 
-const TINTABLE_ICON = new RegExp(`^data:image/svg\+xml[\s\S]*${ICON_TINT_MARKER}`);
+const TINTABLE_ICON = new RegExp(String.raw`^data:image/svg\+xml[\s\S]*${ICON_TINT_MARKER}`);
 
 /** True for an icon the editor baked as a recolourable shape. Older icons carry their own colour and are drawn as they are. */
 export function isTintableIcon(icon: string | undefined): boolean {

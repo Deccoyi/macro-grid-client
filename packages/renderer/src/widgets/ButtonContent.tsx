@@ -44,7 +44,7 @@ function tintStyle(icon: string): CSSProperties {
 
 /** Plain icon image. The URL guard sits directly before the <img> so static analysis sees it guarding the sink. */
 function SafeIconImg({ src, size }: { src: string; size: number }) {
-  return isSafeImageUrl(src) ? <img className="ms-icon" src={src} alt="" aria-hidden="true" style={{ width: size, height: size, margin: 0, flex: "none" }} /> : null;
+  return <>{src && isSafeImageUrl(src) && <img className="ms-icon" src={src} alt="" aria-hidden="true" style={{ width: size, height: size, margin: 0, flex: "none" }} />}</>;
 }
 
 /**

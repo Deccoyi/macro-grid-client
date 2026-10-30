@@ -194,7 +194,7 @@ function renderContent(
 ) {
   switch (widget.type) {
     case "image":
-      return <ImageContent text={text} src={typeof widget.props?.src === "string" ? widget.props.src : undefined} />;
+      return <ImageContent text={text} src={safeImageUrl(typeof widget.props?.src === "string" ? widget.props.src : undefined)} />;
     case "slider":
       return <SliderContent text={text} value={liveValue} props={widget.props} onChange={onValueChange} onCommit={onValueCommit} />;
     case "knob":

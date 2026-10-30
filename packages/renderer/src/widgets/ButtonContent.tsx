@@ -42,11 +42,6 @@ function tintStyle(icon: string): CSSProperties {
   };
 }
 
-/** Plain icon image. The URL guard sits directly before the <img> so static analysis sees it guarding the sink. */
-function SafeIconImg({ src, size }: { src?: string; size: number }) {
-  return src && isSafeImageUrl(src) ? <img className="ms-icon" src={src} alt="" aria-hidden="true" style={{ width: size, height: size, margin: 0, flex: "none" }} /> : null;
-}
-
 /**
  * Shared visual for button, toggle and label widgets: an optional icon positioned around the
  * (possibly multi-line) text.
@@ -60,6 +55,7 @@ function SafeIconImg({ src, size }: { src?: string; size: number }) {
  * moved the block horizontally instead. Keeping the two boxes separate avoids that entirely.
  */
 export function ButtonContent({ text, icon, iconSize = 28, iconPosition = "top" }: ButtonContentProps) {
+  const plainIcon = isTintableIcon(icon) ? undefined : icon;
   const row = iconPosition === "left" || iconPosition === "right";
   return (
     <div className="ms-content">
@@ -68,7 +64,7 @@ export function ButtonContent({ text, icon, iconSize = 28, iconPosition = "top" 
           // The shape is a mask painted with the text colour (currentColor), so a dynamic text colour recolours the icon too.
           <span className="ms-icon ms-icon-tint" aria-hidden="true" style={{ ...tintStyle(icon), width: iconSize, height: iconSize, margin: 0, flex: "none" }} />
         )}
-        {icon && !isTintableIcon(icon) && <SafeIconImg src={icon} size={iconSize} />}
+        {plainIcon && isSafeImageUrl(plainIcon) && <img className="ms-icon" src={plainIcon} alt="" aria-hidden="true" style={{ width: iconSize, height: iconSize, margin: 0, flex: "none" }} />}
         {text && <span className="ms-text">{text}</span>}
       </div>
     </div>

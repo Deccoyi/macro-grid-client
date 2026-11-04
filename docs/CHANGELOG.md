@@ -4,6 +4,10 @@ New features and fixes in the Macro Grid phone app. For technical details, see [
 
 ## Unreleased
 
+## 0.5.1 - 2026-11-05
+### Changed
+- **Updated libraries:** the app and its build tools use newer versions of their libraries, including security updates.
+
 ## 0.5.0 - 2026-10-30
 ### New
 - **Scan the QR code on the PIN screen:** when the app asks for a PIN, you can scan the QR code of another server, or go back to typing a server address.
